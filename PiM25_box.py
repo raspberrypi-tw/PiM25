@@ -1,93 +1,78 @@
-from PiM25_UPDATED import BOX
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+# SUGGESTED CONNECTIONS, but you can of course do it differenlty!
+##############################################################             
+#           Raspberry Pi 3 GPIO Pinout;           Corner --> #
+#                    (pin 1)  | (pin 2)                      #                  
+#  OLED/GPS Vcc       +3.3V   |  +5.0V    Gas sensor GND     #
+#  OLED SDA          GPIO  2  |  +5.0V    PM25 G3 pin 1 Vcc b#     
+#  OLED SCL          GPIO  3  |  GND      PM25 G3 pin 2 GND o#
+#                    GPIO  4  | UART TX                      #
+#  OLED/Gas GND       GND     | UART RX                      #                    GPIO 17  | GPIO 18   PM25 G3 pin 5 TX  g#
+#                    GPIO 17  | GPIO 18   PM25 G3 pin 5 TX  g#
+#                    GPIO 27  |  GND                         #
+#                    GPIO 22  | GPIO 23                      #
+#r MCP3008 Vcc/Vref   +3.3V   | GPIO 24                      #
+#                    GPIO 10  |  GND      DHT22 GND         g#
+#                    GPIO  9  | GPIO 25   DHT22 DATA        b#                      #
+#                    GPIO 11  | GPIO  8   DHT22 POWER       p#
+#                     GND     | GPIO  7                      #
+#                    Reserved | Reserved                     #
+#                    GPIO  5  |  GND                         #
+#b MCP3008 CLK       GPIO  6  | GPIO 12                      #
+#g MCP3008 MISO      GPIO 13  |  GND      (GPS GND)          #
+#y MCP3008 MOSI      GPIO 19  | GPIO 16   (GPS TX)           #
+#o MCP3008 CSbar     GPIO 26  | GPIO 20                      #
+#brMCP3008 GND/GND    GND     | GPIO 21                      #
+#                   (pin 39)  | (pin 40)                     #                  
+##############################################################
+
+from PiM25 import BOX, FIELD
 import time
-from itertools import cycle
-import matplotlib.pyplot as plt
 
 # make a box
-box = BOX('my box', use_WiFi=True,
+box = BOX('my box', use_WiFi=False,
               use_SMBus=True, use_pigpio=True)
 
-# add your sensors
-dht  = box.new_DHT22bb('my dht', DATA=17, POWER=27)
+dht   = box.new_DHT22bb('my dht', DATA=25, POWER=8)
+g3    = box.new_G3bb('my g3', DATA=18, collect_time = 3.0)
+oled  = box.new_OLEDi2c('my oled')
+adc   = box.new_MCP3008bb('my adc', MISO=13, MOSI=19,
+                          CSbar=26, SCLK=6, Vref=3.3)
+CO2   = box.new_MOS_gas_sensor('my CO2', ADC=adc, channel=1,
+                               Rseries=1000,
+                               Calibrationdata=[[100, 10000], [1000, 1000], [10000, 100]],
+                               use_loglog=False, gasname='CO2',
+                               atlimitsisokay=True)
 
-g3   = box.new_G3bb('my dht', DATA=24, collect_time=3.0)
+readables = [d for d in box.devices if hasattr(d, 'read')]
 
-adc  = box.new_MCP3008bbspi('my adc',CSbar=26, MISO=13,
-                            MOSI=19, SCLK=6, Vref=3.3 )
-
-CO   = box.new_MOS_gas_sensor('my CO sensor', ADC='my adc', channel=1,
-                              Rseries=1000,
-                              Calibrationdata=[[10,5000],[100,2200],[1000,777]],
-                              logCalibrationdata=[[10,5000],[100,2200],[1000,777]],
-                              use_loglog=False, gasname='CO')
-
-
-# add your oled screen setup
+for d in readables:
+    print "*** checking: ", d
+    d.read()
+    print d.datadict
 
 oled = box.new_OLEDi2c('my oled')
 
-s1 = oled.new_screen('T and H')
-
-s1.new_field('temp', [2, 5], wh=[120, 24],
-             fmt='T(C) {0:.1f}', fontdef='Arial Unicode.ttf',
-             fontsize=20, info=[[dht, 'temperature']])
-s1.new_field('humid', [2, 35], wh=[120, 24],
-             fmt='H(%) {0:.1f}', fontdef='Arial Unicode.ttf',
-             fontsize=20, info=[[dht, 'humidity']])
-
-s2 = oled.new_screen('particles')
-
-s2.new_field('PMbig', [2, 5], wh=[120, 24],
-             fmt='PM25 {0:.0f}', fontdef='Arial Unicode.ttf',
-             fontsize=20, info=((g3, 'PM25'),))
-s2.new_field('PMsmall', [2, 35], wh=[120, 24],
-             fmt='PM1 {0:.0f}, PM10 {0:.0f}', fontdef='default',
-             fontsize=20, info=((g3, 'PM1'), (g3, 'PM10')))
-
-
-s3 = oled.new_screen('gasses')
-
-s3.new_field('COa', [2, 10], wh=[120, 24],
-             fmt='CO (ppm) {0:.1f}', fontdef='Arial Unicode.ttf',
-             fontsize=18, threshold=30, info=((CO, 'ppm'),))
-
-s3.new_field('COb', [2, 40], wh=[120, 24],
-             fmt='CO (ppm) {0:.1f}', fontdef='Arial Unicode.ttf',
-             fontsize=18, threshold=225, info=((CO, 'ppm'),))
-
-
+if True:
+    oled.YAMLsetup('oledyamlh.yaml')
 
 oled.initiate()
 oled.display_on()
 for thing in ('show_white', 'show_black', 'show_gray'):
     getattr(oled, thing)()
 
-# Define your loop for operation 
+for s in oled.screens:
+    s.update()
 
-wait = 10.  # seconds
 
-# Go!
+
 while True:
-
-    oled.show_gray()
-
-    dht.read()
-    g3.read()
-    adc.digitize_one_channel(1)
-    CO.read()
-
-    # or just use box.read_all()
-    # lass.build_and_send_to_LASS()
-    # print lass.LASS_string
-
+    print "r", 
+    for d in readables:
+        d.read()
     for s in oled.screens:
-        s.update_all()
-
-    tnext   = time.time() + wait
-
-    screenz = cycle(oled.screens)
-            
-    while time.time() < tnext:
-        s = screenz.next()
+        s.update()
         oled.show_screen(s)
-        time.sleep(1.5)
+        time.sleep(1)

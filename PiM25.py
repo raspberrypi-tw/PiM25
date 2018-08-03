@@ -1,6 +1,34 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# SUGGESTED CONNECTIONS, but you can of course do it differenlty!
+##############################################################             
+#           Raspberry Pi 3 GPIO Pinout;           Corner --> #
+#                    (pin 1)  | (pin 2)                      #                  
+#  OLED/GPS Vcc       +3.3V   |  +5.0V    Gas sensor GND     #
+#  OLED SDA          GPIO  2  |  +5.0V    PM25 G3 pin 1 Vcc b#     
+#  OLED SCL          GPIO  3  |  GND      PM25 G3 pin 2 GND o#
+#                    GPIO  4  | UART TX                      #
+#  OLED/Gas GND       GND     | UART RX                      #
+#                    GPIO 17  | GPIO 18   PM25 G3 pin 5 TX  g#
+#                    GPIO 27  |  GND                         #
+#                    GPIO 22  | GPIO 23                      #
+#r MCP3008 Vcc/Vref   +3.3V   | GPIO 24                      #
+#                    GPIO 10  |  GND      DHT22 GND         g#
+#                    GPIO  9  | GPIO 25   DHT22 DATA        b#                      #
+#                    GPIO 11  | GPIO  8   DHT22 POWER       p#
+#                     GND     | GPIO  7                      #
+#                    Reserved | Reserved                     #
+#                    GPIO  5  |  GND                         #
+#b MCP3008 CLK       GPIO  6  | GPIO 12                      #
+#g MCP3008 MISO      GPIO 13  |  GND      (GPS GND)          #
+#y MCP3008 MOSI      GPIO 19  | GPIO 16   (GPS TX)           #
+#o MCP3008 CSbar     GPIO 26  | GPIO 20                      #
+#brMCP3008 GND/GND    GND     | GPIO 21                      #
+#                   (pin 39)  | (pin 40)                     #                  
+##############################################################
+
+
 import pigpio, smbus
 import atexit 
 import re, commands
@@ -128,7 +156,6 @@ class BOX(object):
 
         return systimedatedict
 
-
     def make_a_pi(self):
 
         status, process = commands.getstatusoutput('sudo pidof pigpiod')   # check it
@@ -213,7 +240,6 @@ class BOX(object):
         # needs work!
         return stat, out
 
-
     # METHODS that involve MAC address
 
     def get_mac_address(self):
@@ -295,31 +321,31 @@ class BOX(object):
         dht = DHT22bb(box=self, name=name, DATA=DATA, POWER=POWER)
         return dht
         
-    def new_MCP3008bbspi(self, name, CSbar=None, MISO=None,
+    def new_MCP3008bb(self, name, CSbar=None, MISO=None,
                          MOSI=None, SCLK=None, Vref=None):
 
-        mcp3008 = MCP3008bbspi(box=self, name=name, CSbar=CSbar,
+        mcp3008 = MCP3008bb(box=self, name=name, CSbar=CSbar,
                                MISO=MISO, MOSI=MOSI, SCLK=SCLK, Vref=Vref)
         return mcp3008
 
     def new_MOS_gas_sensor(self, name, ADC=None, channel=None,
                            Rseries=None, Calibrationdata=None,
-                           logCalibrationdata=None,
-                           use_loglog=None, gasname=None):
+                           use_loglog=None, gasname=None,
+                           atlimitsisokay=None):
 
         gas_sensor = MOS_gas_sensor(box=self, name=name, 
                                     ADC=ADC, channel=channel, Rseries=Rseries,
                                     Calibrationdata=Calibrationdata,
-                                    logCalibrationdata=logCalibrationdata,
-                                    use_loglog=use_loglog, gasname=gasname)
+                                    use_loglog=use_loglog, gasname=gasname,
+                                    atlimitsisokay=atlimitsisokay)
         return gas_sensor
         
     def new_OLEDi2c(self, name):
         oled = OLEDi2c(box=self, name=name)
         return oled
 
-    def new_Dummy(self, name):
-        dummy = Dummy(box=self, name=name)
+    def new_Dummy(self, name, dummydatadict=None):
+        dummy = Dummy(box=self, name=name, dummydatadict=dummydatadict)
         return dummy
 
     def get_device(self, devname):
@@ -343,6 +369,7 @@ class BOX(object):
         """wrapper to make instantiation 'look nicer'"""
         log = LOG(self, filenmae, name)
         return lass
+
 
 class LASS(object):
     def __init__(self, box, name=None):
@@ -551,8 +578,6 @@ class LASS(object):
         self.send_to_LASS()
         return self.LASS_string
 
-
-
         # ['ver_format', 'fmt_opt', 'app', 'ver_app', 'device_id', 'tick',
         # 'date', 'time', 'device', 's_0', 's_1', 's_2', 's_3', 's_d0',
         # 's_t0', 's_h0', 'gps_lat', 'gps_lon', 'gps_fix', 'gps_num',
@@ -679,19 +704,14 @@ class Dummy(GPIO_DEVICE):
 
     devkind       = 'Dummy'
 
-    def __init__(self, box, name, datadict=None):
+    def __init__(self, box, name, dummydatadict=None):
 
         self.instance_things = locals()
 
         GPIO_DEVICE.__init__(self, box, name)
-        
-        if datadict == None:
-            datadict = dict()
-        self.datadict = datadict
 
-    def __repr__(self):
-        return ('{self.__class__.__name__}({self.name})'
-                .format(self=self))
+        if type(dummydatadict) == dict:
+            self.datadict.update(dummydatadict)
 
     def read(self):
 
@@ -890,18 +910,31 @@ class GPSbb(GPIO_DEVICE):
                 self.datadict['coor_time_string']  = coor_time_string
 
                 if alti_unit.lower() == 'm':
-                    self.datadict['altitude'] = alti_num
+                    self.datadict['altitude_meters'] = alti_num
+                else:
+                    self.datadict['altitude_meters'] = None
+
+                self.datadict['altitude']       = alti_num
+                self.datadict['altitude_units'] = alti_unit
 
                 if h_geoid_unit.lower() == 'm':
-                    self.datadict['h_geoid']  = h_geoid
+                    self.datadict['h_geoid_meters']  = h_geoid
+                else:
+                    self.datadict['h_geoid_meters']  = None
+
+                self.datadict['h_geoid']        = h_geoid
+                self.datadict['h_geoid_units']  = h_geoid_unit
 
         for line in speed_lines:
             speed, speed_units   = line[7:9]
 
             if speed_units.lower() == 'k':
-
-                self.datadict['speed']         = speed
-                self.datadict['speed_units']   = speed_units
+                self.datadict['speed_kph']         = speed
+            else:
+                self.datadict['speed_kph']         = None
+        
+            self.datadict['speed']         = speed
+            self.datadict['speed_units']   = speed_units
 
             speed, speed_units   = line[7:9]                          
 
@@ -919,7 +952,6 @@ class GPSbb(GPIO_DEVICE):
         self.datadict['satdict']   = satdict  # very inclusive!
 
 
-
 class DHT22bb(GPIO_DEVICE):
 
     devkind = "DHT22"
@@ -930,7 +962,7 @@ class DHT22bb(GPIO_DEVICE):
 
         GPIO_DEVICE.__init__(self, box, name)
 
-        print "    ## ## I have a pi!"
+        print "    ## ## I have a pi!"   # heytoday deleteme!
         print self.pi
 
         self.DATA  = DATA
@@ -1047,8 +1079,8 @@ class DHT22bb(GPIO_DEVICE):
                 self.datadict['temperature'] = temperature
 
         else:
-            print "diffs_length is not 43, it's ", diffs_length
-
+            # print "diffs_length is not 43, it's ", diffs_length
+            pass
 
     # CANCEL THE WATCHDOG ON EXIT!
     def cancel(self):
@@ -1129,6 +1161,43 @@ class OLEDi2c(GPIO_DEVICE):
         # and also
         self.ADDR = self.SSD1306_I2C_ADDRESS #  = 0x3C    # 011110+SA0+RW - 0x3C or 0x3D
         
+    def YAMLsetup(self, fname):
+
+        try:
+            with open(fname, 'r') as infile:
+                self.yamldict = yaml.load(infile)
+        except:
+            print "yaml read failed for some reason"
+
+        try:
+            for sname, sdef in self.yamldict.items():
+                screen = self.new_screen(sname)
+                if 'fields' in sdef:
+                    for fname, fdef in sdef['fields'].items():
+                        xy0  = fdef['xy0']
+                        args = fdef['args']
+                        infopairs = args['info']
+                        newpairs  = []
+                        for devname, key in infopairs:
+                            devicx = self.box.get_device(devname)
+                            newpairs.append([devicx, key])
+                        args['info'] = newpairs
+                            
+                        screen.new_field(fname, xy0, **args)
+
+            print "successfull oled yaml setup!"
+
+            for s in self.screens:
+                print s
+                for f in s.fields:
+                    print '  ', f
+
+            return self.yamldict
+        
+        except:
+            print "yaml setup could not be implemented successfully for some reason"
+            pass                        
+
     def new_screen(self, name):
         s = SCREEN(self.nxy, name)
         self.add_screen(s)
@@ -1244,51 +1313,58 @@ class OLEDi2c(GPIO_DEVICE):
         allbytez = sum(Zbinpages, [])
         return allbytez
 
-    def get_screen(self, showscreen):
-        if showscreen in self.screens:    # screen object
-            screen = showscreen
-        elif showscreen in self.screendict:    # screen name
-            screen = self.screendict[showscreen]
+    def get_screen(self, screenname): # heytoday this is updated! 
+
+        try:
+            device = [s for s in self.screens if s.name == screenname][0]
+        except:
+            print " oh, I couldn't find s.name = ", screenname
+            print " all of the names are: ", [s.name for s in self.screens]
+            device = None
+            
+        return device
+        
+    def show_screen(self, showscreen): # heytoday this is updated!
+
+        if showscreen not in self.screens:    # screen object
+            showscreen = self.get_screen(showscreen)   # screen name search
+
+        if showscreen:
+            self.array = showscreen.array.copy()
+            self.show_array()
         else:
             print "screen not found"
-            screen = None
-        return screen
-            
-    def show_screen(self, showscreen):
+        return showscreen
 
-        screen = self.get_screen(showscreen)
+    def preview_screen(self, previewscreen):  # heytoday this is updated!
 
-        if screen:        
-            self.array = screen.array.copy()
-            self.show_array()
-        
-    def preview_screen(self, showscreen):
+        if previewscreen not in self.screens:    # screen object
+            previewscreen = self.get_screen(previewscreen)   # screen name search
 
-        screen = get_screen(showscreen)
-
-        if screen:        
+        if previewscreen:
             screen.preview_me()
         
     def preview_me(self):
 
         plt.figure()
-        plt.imshow(self.array, cmap='gray')
+        plt.imshow(self.array, cmap='gray', interpolation='nearest')
         plt.show()
         
-    def update_all_and_show_screen(self, showscreen):
+    def update_and_show_screen(self, showscreen):  # heytoday this is updated!
 
-        screen = get_screen(showscreen)
+        showscreen = self.get_screen(showscreen)
 
-        if screen:
-            screen.update_all()
-            self.show_screen(screen)
+        if showscreen:
+            showscreen.update_all()
+            self.show_screen(showscreen)
 
     def array_stats(self):
 
         print "self.array.min(), self.array.max(): ", self.array.min(), self.array.max()
         print "self.array.shape, self.array.dtype: ", self.array.shape, self.array.dtype
 
-class MCP3008bbspi(GPIO_DEVICE):
+
+class MCP3008bb(GPIO_DEVICE):
     
     devkind="MCP3008"
     
@@ -1363,16 +1439,15 @@ class MOS_gas_sensor(GPIO_DEVICE):
     devkind="MOS_gas_sensor"
     
     def __init__(self, box, name, ADC, channel, Rseries, 
-                 Calibrationdata, logCalibrationdata, 
-                 use_loglog = True, gasname=None):
+                 Calibrationdata, 
+                 use_loglog = False, gasname=None,
+                 atlimitsisokay = False):
 
         self.instance_things = locals()
 
         GPIO_DEVICE.__init__(self, box, name)
 
-        if ADC in self.box.devices:
-            pass
-        else:
+        if ADC not in self.box.devices:
             ADC            = self.box.get_device(ADC)
         
         self.ADC                = ADC
@@ -1380,62 +1455,55 @@ class MOS_gas_sensor(GPIO_DEVICE):
         self.channel            = channel
         self.Rseries            = Rseries
         self.Calibrationdata    = Calibrationdata
-        self.logCalibrationdata = logCalibrationdata
         self.use_loglog         = use_loglog
         self.gasname            = gasname
+        self.atlimitsisokay     = atlimitsisokay
 
         Resistdata,    ppmdata    = zip(*self.Calibrationdata)
-        logResistdata, logppmdata = zip(*self.logCalibrationdata)
 
         self.ppmdata              = ppmdata
         self.Resistdata           = Resistdata
-
-        self.logppmdata           = logppmdata
-        self.logResistdata        = logResistdata
 
         self.use_loglog           = use_loglog
 
         self.ppmdata              = ppmdata
         self.Resistdata           = Resistdata
 
-        if self.use_loglog:
-            self.log_ppmdata    = [np.log(ppm) for ppm in self.ppmdata   ]
-            self.log_Resistdata = [np.log(Res) for Res in self.Resistdata]
-
     def read(self):
 
         self.datadict = dict()    # clear old data
 
         # get data
-        voltage, adc_value, adc_convert_time = self.ADC.measure_one_voltage(self.channel,
-                                                                            clear_datadict=False)  # make ADC measurement
+        v, adc_val, adc_time = self.ADC.measure_one_voltage(self.channel,
+                                                            clear_datadict=False)  # make ADC measurement
+        if v < 0.1 or v > self.Vref - 0.1:
+            v = None   # don't continue with pathaological voltage
 
         try:
-            R_sensor = self.Rseries*(self.Vref/voltage - 1)
+            R_sensor = self.Rseries*(self.Vref/v - 1.)
         except:
-            R_sensor = None
-            print ' divide by zero, bad read'
+            R_sensor = None  # don't continue with pathaological resistance
 
-        if self.use_loglog:
-            log_R_sensor = np.log(R_sensor)
-            log_ppm      = np.interp(log_R_sensor, self.logResistdata, self.logppmdata)
-            ppm          = np.exp(log_ppm)
-        else:
-            ppm      = np.interp(R_sensor, self.Resistdata, self.ppmdata)
+        try:
+            ppm = np.interp(R_sensor, self.Resistdata, self.ppmdata)
+        except:
+            ppm = None  # don't continue with pathaological interpolation
         
-        if ppm <= 0:
-            ppm = None
+        if self.atlimitsisokay:
+            if ppm <= 0 or ppm < min(self.ppmdata) or ppm > max(self.ppmdata):
+                ppm = None
+        else:
+            if ppm <= 0 or ppm <= min(self.ppmdata) or ppm >= max(self.ppmdata):
+                ppm = None
 
         self.datadict['read_time']        = time.time()
         self.datadict['ppm']              = ppm
         self.datadict['R_sensor']         = R_sensor
-        self.datadict['voltage']          = voltage
-        self.datadict['adc_value']        = adc_value
-        self.datadict['adc_convert_time'] = adc_convert_time
-        if self.use_loglog:
-            self.datadict['log_ppm']      = log_ppm
-            self.datadict['log_R_sensor'] = log_R_sensor
- 
+        self.datadict['voltage']          = v
+        self.datadict['adc_value']        = adc_val
+        self.datadict['adc_convert_time'] = adc_time
+
+
 class SCREEN(object):
     
     devkind = "SCREEN"
@@ -1454,17 +1522,29 @@ class SCREEN(object):
     def new_field(self, name, xy0, wh=None,
                   fmt=None, fontdef=None, fontsize=None,
                   threshold=None, info=None):
+        
         f = FIELD(name, wh, fmt, fontdef, fontsize, threshold, info)
         self.add_field(f, xy0)
         return f
     
-    def add_field(self, f, xy0):
+    def add_field(self, f, xy0):   # heytoday this is updated!
         self.fields[f] = xy0
+        f.screens.append(self)
         return f
             
+    def get_field(self, fieldname):    # heytoday this is updated!
+
+        try:
+            field = [f for f in self.fields if f.name == fieldname][0]
+        except:
+            print " oh, I couldn't find f.name = ", fieldname
+            print " all of the names are: ", [f.name for f in self.fields]
+            field = None
+            
+        return field
+
     def _embed(self, small_array, big_array, big_index):
         """Overwrites values in big_array starting at big_index with those in small_array"""
-        # from https://stackoverflow.com/questions/33005391/best-way-to-insert-values-of-3d-array-inside-of-another-larger-array
         slices = [np.s_[i:i+j] for i,j in zip(big_index, small_array.shape)]
         big_array[slices] = small_array
         try:
@@ -1480,7 +1560,7 @@ class SCREEN(object):
 
             self._embed(field.array, self.array, xy0[::-1])
 
-    def update_all(self):
+    def update(self):   # heytoday this is updated!
 
         for field in self.fields:
 
@@ -1491,12 +1571,12 @@ class SCREEN(object):
     def preview_me(self):
 
         plt.figure()
-        plt.imshow(self.array, cmap='gray')
+        plt.imshow(self.array, cmap='gray', interpolation='nearest')
         plt.show()
 
-    def update_all_and_preview_me(self):
+    def update_and_preview_me(self):  # heytoday this is updated!
 
-        self.update_all()
+        self.update()
         self.preview_me()
 
 
@@ -1510,6 +1590,8 @@ class FIELD(object):
 
         self.name            = name
         self.wh              = wh
+
+        self.screens         = []
 
         try:
             self.w, self.h   = self.wh[:2]
@@ -1546,18 +1628,47 @@ class FIELD(object):
         self._update_string()
         self._generate_array()
 
+    def _get_pairs(self, fmt):
+        pairs =[(m.start(), m.end()) for m in re.finditer('{([^{)]*)}', fmt)]
+        return pairs
+
+    def _stringit(self, fmt, data):
+        xchar = '##'
+        xchar_alt = u'\u25A1\u25A0'
+        pairs = self._get_pairs(fmt)
+        if len(pairs) == 0:
+            s = fmt.format()
+        else:
+            keepers = [fmt[:pairs[0][0]]]
+            for i in range(len(pairs)-1):
+                keepers.append(fmt[pairs[i][1]:pairs[i+1][0]])
+            keepers.append(fmt[pairs[-1][1]:])
+            zingers = [fmt[p[0]:p[1]] for p in pairs]
+            newdata = []
+            newfmt  = keepers[0]
+            for d, z, k in zip(data, zingers, keepers[1:]):
+                if d == None:
+                    newfmt += xchar + k
+                else:
+                    newdata.append(d)
+                    newfmt += z + k
+            s = newfmt.format(*newdata)
+        return s
+
     def _update_string(self):
         self.string = ''
         self.values = []
-        try:
-            for device, key in self.info:
+        for device, key in self.info:
+            try:
                 dev = device # self.box.get_device(device)
                 value = dev.datadict[key]
                 self.values.append(value)
-            self.string = self.fmt.format(*self.values)
-        except:
-            print 'oops, fail!'
-            pass
+            except:
+                self.values.append(None)
+
+        self.string = self._stringit(self.fmt, self.values)
+
+        # self.string = self.fmt.format(*self.values)
 
     def _generate_array(self):
         # print " trying to generate my array! ", self.name
@@ -1587,7 +1698,7 @@ class FIELD(object):
     def preview_me(self):
 
         plt.figure()
-        plt.imshow(self.array, cmap='gray')
+        plt.imshow(self.array, cmap='gray', interpolation='nearest')
         plt.show()
 
     def update_and_preview_me(self):
@@ -1665,29 +1776,3 @@ def PiM25YAMLreader(fname):
     return boxes
 
 
-def PiM25YAMLwriter(fname, boxes):
-            
-    boxesdict = dict()
-    for box in boxes:
-        boxdict = dict()
-        boxesdict[box.name] = boxdict
-        args = dict()
-        boxdict['args'] = args
-        for thing in box.instance_things:
-            args[thing] = getattr(box, thing)
-        devicesdict = dict()
-        boxdict['devices'] = devicesdict
-        for dev in box.devices:
-            devdict = dict()
-            devicesdict[dev.name] = devdict
-            devdict['method'] = dev.__class__.__name__
-            devdict['args'] = dev.get_my_current_instance_info()
-
-    with open(fname, 'w') as outfile:
-        yaml.dump(boxesdict, outfile)
-
-
-
-
-
-    
