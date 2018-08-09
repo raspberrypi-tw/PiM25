@@ -28,11 +28,11 @@
 #                   (pin 39)  | (pin 40)                     #                  
 ##############################################################
 
-from PiM25 import BOX, FIELD
+from PiM25 import BOX
 import time
 
 # make a box
-box = BOX('my box', use_WiFi=False,
+box = BOX('my box', use_WiFi=True,
               use_SMBus=True, use_pigpio=True)
 
 dht   = box.new_DHT22bb('my dht', DATA=25, POWER=8)
@@ -45,33 +45,46 @@ CO2   = box.new_MOS_gas_sensor('my CO2', ADC=adc, channel=1,
                                Calibrationdata=[[100, 10000], [1000, 1000], [10000, 100]],
                                use_loglog=False, gasname='CO2',
                                atlimitsisokay=True)
+dummy = box.new_Dummy('my dummy', dummydatadict={'x':42})
+
+mylogconfig = {dht:['temperature', 'humidity'], 
+               g3:['PM25', 'PM1', 'PM10'],
+               CO2:['ppm'], dummy:['x']}
+
+mylog = box.new_LOG('mylog.txt', 'mylog')
+mylog.configure(mylogconfig)
+
+lass = box.new_LASS('mylass')
+lass.set_static_location(latlon=(25.033661, 121.564841), alt=550.)  # TPE101
+lass.set_sources(humsrc=dht, tempsrc=dht,
+                 pm25src=g3, pm1src=g3, pm10src=g3, 
+                 timedatesrc='system', GPSsrc='static')
 
 readables = [d for d in box.devices if hasattr(d, 'read')]
 
 for d in readables:
-    print "*** checking: ", d
     d.read()
-    print d.datadict
-
-oled = box.new_OLEDi2c('my oled')
+    print d, 'read is good: ', d.last_read_is_good
 
 if True:
-    oled.YAMLsetup('oledyamlh.yaml')
+    oled.YAMLsetup('oledyaml.yaml')
 
 oled.initiate()
 oled.display_on()
 for thing in ('show_white', 'show_black', 'show_gray'):
     getattr(oled, thing)()
 
-for s in oled.screens:
-    s.update()
-
-
-
 while True:
-    print "r", 
+    print "loop!" 
     for d in readables:
         d.read()
+        
+    mylog.build_and_save_entry(sysinfo_interval=10)
+
+    lass.build_entry()
+
+    print lass.LASS_string
+
     for s in oled.screens:
         s.update()
         oled.show_screen(s)

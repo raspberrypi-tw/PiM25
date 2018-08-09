@@ -2,30 +2,30 @@ TandH:
   fields:
     temp:
       args: {'wh':[120, 24],
-             'fmt':'T(C) {:0.1f}, H(%) {:0.1f}', 'fontdef':'Arial Unicode.ttf',
+             'fmt':'T(C) {:0.1f}, H(%) {:0.1f}', 'fontdef':'FreeSansBold.ttf',
              'fontsize':14, 'info':[['my dht', 'temperature'], ['my dht', 'humidity']]}
       xy0: [2, 5]
 particles:
   fields:
     PMsmall:
       args: {'wh':[120, 24],
-             'fmt':'PM1 {:0.0f}, PM10 {:0.0f}', 'fontdef':'Arial Unicode.ttf',
+             'fmt':'PM1 {:0.0f}, PM10 {:0.0f}', 'fontdef':'FreeSansBold.ttf',
              'fontsize':14, 'info':[['my g3', 'PM1'], ['my g3', 'PM10']]}
       xy0: [2, 5]
     PMbig:
       args: {'wh':[120, 24],
-             'fmt':'PM25 {:0.0f}', 'fontdef':'Arial Unicode.ttf',
+             'fmt':'PM25 {:0.0f}', 'fontdef':'FreeSansBold.ttf',
              'fontsize':20, 'info':[['my g3', 'PM25']]}
       xy0: [2, 35]
 gasses:
   fields:
     CO2a:
       args: {'wh':[120, 24],
-             'fmt':'CO2 ppm {:0.1f}', 'fontdef':'Arial Unicode.ttf',
-             'fontsize':16, 'threshold':80, 'info':[['my CO2', 'ppm']]}
+             'fmt':'CO2 ppm {:0.1f}', 'fontdef':'FreeSansBold.ttf',
+             'fontsize':16, 'threshold':120, 'info':[['my CO2', 'ppm']]}
       xy0: [2, 5]
     CO2b:
       args: {'wh':[120, 24],
-             'fmt':'CO2 ppm {:0.1f}', 'fontdef':'Arial Unicode.ttf',
-             'fontsize':16, 'threshold':225, 'info':[['my CO2', 'ppm']]}
+             'fmt':'CO2 ppm {:0.1f}', 'fontdef':'FreeSansBold.ttf',
+             'fontsize':16, 'info':[['my CO2', 'ppm']]}
       xy0: [2, 40]

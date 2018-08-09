@@ -43,42 +43,7 @@ from binascii import hexlify
 from PIL import Image, ImageDraw, ImageFont
 import matplotlib.pyplot as plt
 
-class GPIO_DEVICE(object):
-
-    def __init__(self, box, name=None):
-
-        self.box              = box
-        self.pi               = self.box.pi
-        self.bus              = self.box.bus
-        self.name             = name
-        self.datadict         = dict()
-
-        self.box.add_device(self)
-
-        donts = ('self', 'name', 'box')
-        for dont in donts:
-            try:
-                self.instance_things.pop(dont)
-            except:
-                pass
-
-    def __repr__(self):
-                return ('{self.__class__.__name__}({self.name})'
-                        .format(self=self))
-
-    def get_my_current_instance_info(self):
-
-        current_info = dict()
-        for key in self.instance_things:
-            current_info[key] = getattr(self, key)
-        return current_info
-
-    def get_my_original_instance_info(self):
-
-        original_info = self.instance_things.copy()
-
-        return original_info
-
+import logging    # heyhere
 
 class BOX(object):
 
@@ -86,6 +51,19 @@ class BOX(object):
 
     def __init__(self, name, use_WiFi=False, use_SMBus=False,
                  use_pigpio=False):
+
+        self.name = name
+
+        # Create and configure logger
+        LOG_FORMAT = "%(levelname)s %(asctime)s - %(message)s" 
+        logging.basicConfig(filename = "PiM25box_logging.log", 
+                            level    = logging.DEBUG, 
+                            format   = LOG_FORMAT, 
+                            filemode = 'w')
+
+        self.logger = logging.getLogger() 
+
+        self.logger.info("box '{}' __init__".format(self.name))  
 
         self.instance_things = locals()
         donts = ('self', 'name')
@@ -110,6 +88,7 @@ class BOX(object):
         if self.use_WiFi:
             self._get_nWiFi()
             self.WiFi_setstatus('on')
+            self.logger.info("WiFi_setstatus('on')") 
         else:
             pass
 
@@ -117,6 +96,7 @@ class BOX(object):
         if self.use_pigpio:
             print '    it was True'
             self.make_a_pi()
+            self.logger.info("make_a_pi()") 
         else:
             print '    it was False'
             self.pi              = None
@@ -124,6 +104,7 @@ class BOX(object):
 
         if self.use_SMBus:
             self.bus             = smbus.SMBus(1)
+            self.logger.info("smbus.SMBus(1)")
         else:
             self.bus             = None
 
@@ -162,6 +143,7 @@ class BOX(object):
 
         if status:  #  it wasn't running, so start it
             print "pigpiod was not running"
+            self.logger.info("pigpiod was not running") 
             commands.getstatusoutput('sudo pigpiod')  # start it
             time.sleep(0.5)
             status, process = commands.getstatusoutput('sudo pidof pigpiod')   # check it again        
@@ -169,13 +151,16 @@ class BOX(object):
         if not status:  # if it worked, i.e. if it's running...
             self.pigpiod_process = process
             print "pigpiod is running, process ID is: ", self.pigpiod_process
+            self.logger.info("pigpiod is running, process ID is: {}".format(self.pigpiod_process))
 
             try:
                 self.pi = pigpio.pi()  # local GPIO only
                 print "pi is instantiated successfully"
+                self.logger.info("pi is instantiated successfully")
             except Exception, e:
                 str_e = str(e)
                 print "problem instantiating pi, the exception message is: ", str_e
+                self.logger.warning("problem instantiating pi: {}".format(str_e))
                 self.start_pigpiod_exception = str_e
 
     # METHODS that involve WiFi
@@ -188,6 +173,7 @@ class BOX(object):
                 self.WiFi_off()
             else:
                 print "WiFi_onoff unrecognized string"
+                self.logger.warning("WiFi_onoff unrecognized string: {}".format(on_or_off))
         else:
             if on_or_off:
                 self.WiFi_on()
@@ -203,13 +189,16 @@ class BOX(object):
             if isblocked == 'yes':
                 WiFi_is_on = False
                 print "WiFi is off"
+                self.logger.info("WiFi is off")
             elif isblocked == 'no':
                 WiFi_is_on = True
                 print "WiFi is on" 
+                self.logger.info("WiFi is on")
             else:
                 print "can't tell if WiFi is on or off"
         except:
             print "problem checking WiFi status"
+            self.logger.warning("problem checking WiFi status") 
 
         return WiFi_is_on
 
@@ -217,20 +206,24 @@ class BOX(object):
         stat, out = commands.getstatusoutput("sudo rfkill unblock " + str(self.nWiFi))
         if stat:
             print "problem turning WiFi on" , stat, out       
+            self.logger.warning("problem turning WiFi on") 
 
     def WiFi_off(self):
         
         stat, out = commands.getstatusoutput("sudo rfkill block " + str(self.nWiFi))
         if stat:
             print "problem turning WiFi off"
+            self.logger.warning("problem turning WiFi off") 
 
     def _get_nWiFi(self):
 
         stat, out = commands.getstatusoutput("sudo rfkill list | grep phy0 | awk '{print $1}'")
         try:
             self.nWiFi = int(out.replace(':', '')) # confirm by checking that it can be an integer
+            self.logger.info("nWiFi: {}".format(self.nWiFi))  # heyhere
         except:
-            print "there was an exception! "
+            # print "there was an exception! "
+            self.logger.warning("there was a problem checking nWiFi!")  # heyhere
             self.nWiFi = None
 
     # METHODS that involve ntpdate
@@ -252,35 +245,37 @@ class BOX(object):
         ifconfig = commands.getoutput("ifconfig eth0 " +
                                       " | grep HWaddr | " + 
                                       "awk '{print $5}'")
-        print ' ifconfig: ', ifconfig
+        # print ' ifconfig: ', ifconfig
+        self.logger.info("ifconfig: {}".format(ifconfig)) 
   
         if type(ifconfig) is str:
             possible_mac = ifconfig.replace(':','')   # alternate
             if len(possible_mac) == 12:
                 self.mac_address = possible_mac
+                self.logger.info("self.mac_address: {}".format(possible_mac))
 
     # METHODS that involve system status
 
-    def _get_some_system_info(self):
-        infostring = ['\n--------\n--------\n']
+    def _get_some_system_info_lines(self):
+        info_lines = ['', '--------', '--------']
         things     = ('uname -a', 'lsb_release -a', 'df -h', 'free',
                      'vcgencmd measure_temp')
         for thing in things:
-            infostring.append('COMMAND: "' + thing + '"\n')
             err, msg = commands.getstatusoutput(thing)
             if not err:
-                infostring.append('  ' + msg + '\n--------\n')
+                info_lines += ['COMMAND: ' + thing +
+                               ' returns: ' + msg, '--------']
             else:
-                infostring.append('  ' + 'error' + '\n--------\n')                       
-        infostring += '--------\n'
-
-        infostring = ''.join(info)
+                info_lines += ['COMMAND: ' + thing +
+                               ' returns: error', '--------']
+        info_lines += ['--------']
         
-        return infostring
+        return info_lines
 
-    def print_some_system_info(self):
-        infostring = _get_some_system_info()
-        print infostring
+    def print_some_system_info_lines(self):
+        info_lines = _get_some_system_info_lines()
+        for line in info_lines:
+            print line
      
 
     def get_system_datetime(self):
@@ -306,19 +301,34 @@ class BOX(object):
         return msg    
     
     def add_device(self, device):
-        self.devices.append(device)
-        return device
+        if type(device.name) is not str:
+            print "device not added, type(device.name) is not str: {}".format(device.name)
+            self.logger.error("device not added, type(device.name) is not str: {}".format(device.name))  # heyhere
+        elif len(device.name) == 0:
+            print "device not added, zero-length name not allowed"
+            self.logger.error("device not added, zero-length name not allowed")  # heyhere
+        elif self.get_device(device.name) is not None:
+            print "device with name '{}' not added, that name is already present".format(device.name)
+            self.logger.error("device with name '{}' not added, that name is already present".format(device.name))  # heyhere
+        else:
+            self.devices.append(device)
+            print "device with unique name '{}' successfully added".format(device.name)
+            self.logger.info("device with unique name '{}' successfully added".format(device.name))  # heyhere
+        
         
     def new_G3bb(self, name, DATA=None, collect_time=None):
         g3 = G3bb(box=self, name=name, DATA=DATA, collect_time=collect_time)
+        self.logger.info("new_G3bb: '{}'".format(g3.name))
         return g3
 
     def new_GPSbb(self, name, DATA=None, collect_time=None):
         gps = GPSbb(box=self, name=name, DATA=DATA, collect_time=collect_time)
+        self.logger.info("new_GPSbb: '{}'".format(gps.name))
         return gps
 
     def new_DHT22bb(self, name, DATA=None, POWER=None):
         dht = DHT22bb(box=self, name=name, DATA=DATA, POWER=POWER)
+        self.logger.info("new_DHT22bb: '{}'".format(dht.name))
         return dht
         
     def new_MCP3008bb(self, name, CSbar=None, MISO=None,
@@ -326,6 +336,7 @@ class BOX(object):
 
         mcp3008 = MCP3008bb(box=self, name=name, CSbar=CSbar,
                                MISO=MISO, MOSI=MOSI, SCLK=SCLK, Vref=Vref)
+        self.logger.info("new_MCP3008bb: '{}'".format(mcp3008.name)) 
         return mcp3008
 
     def new_MOS_gas_sensor(self, name, ADC=None, channel=None,
@@ -338,14 +349,17 @@ class BOX(object):
                                     Calibrationdata=Calibrationdata,
                                     use_loglog=use_loglog, gasname=gasname,
                                     atlimitsisokay=atlimitsisokay)
+        self.logger.info("new_MOS_gas_sensor: '{}'".format(gas_sensor.name))
         return gas_sensor
         
     def new_OLEDi2c(self, name):
         oled = OLEDi2c(box=self, name=name)
+        self.logger.info("new_OLEDi2c: '{}'".format(oled.name))
         return oled
 
     def new_Dummy(self, name, dummydatadict=None):
         dummy = Dummy(box=self, name=name, dummydatadict=dummydatadict)
+        self.logger.info("new_Dummy: '{}'".format(dummy.name)) 
         return dummy
 
     def get_device(self, devname):
@@ -353,8 +367,6 @@ class BOX(object):
         try:
             device = [d for d in self.devices if d.name == devname][0]
         except:
-            print " oh, I couldn't find d.name = ", devname
-            print " all of the names are: ", [d.name for d in self.devices]
             device = None
             
         return device
@@ -363,12 +375,14 @@ class BOX(object):
         """wrapper to make instantiation 'look nicer'"""
         lass = LASS(self, name)
         self.LASS_devices.append(lass)
+        self.logger.info("new_LASS: '{}'".format(lass.name)) 
         return lass
 
     def new_LOG(self, filename='deleteme.txt', name=None):
         """wrapper to make instantiation 'look nicer'"""
-        log = LOG(self, filenmae, name)
-        return lass
+        log = LOG(self, filename, name)
+        self.logger.info("new_LOG: '{}' filename: '{}'".format(log.name, log.filename)) 
+        return log
 
 
 class LASS(object):
@@ -377,6 +391,8 @@ class LASS(object):
         self.box              = box
         self.name             = name
         self.devkind          = 'LASS'
+
+        self.box.logger.info("LASS '{}' __init__".format(self.name))  
 
         self.mac_address      = box.mac_address
         
@@ -418,18 +434,25 @@ class LASS(object):
                 self.static_lat = latlon[0]
                 self.static_lon = latlon[1]
                 print "static latitude and longitude set."
+                self.box.logger.info("set static latitude: {} longitude: {}"
+                                     .format(self.static_lat, self.static_lon))
             elif all([type(x) is str for x in latlon[:2]]):
                 try:
                     lat, lon = [float(x) for x in latlon[:2]]
                     self.static_lat = lat
                     self.static_lon = lon
                     print "static latitude and longitude set."
+                    self.box.logger.info("set static latitude: {} longitude: {}"
+                                         .format(self.static_lat, self.static_lon)) 
                 except:
+                    print "static latitude and longitude set has failed!"
+                    self.box.logger.error("static latitude and longitude set has failed!") 
                     pass
 
         if type(alt) is float:
             self.static_alt = alt
             print "static altitude set."
+            self.box.logger.info("sstatic altitude set: {}".format(self.static_alt)) 
         
     def set_sources(self, humsrc=None, tempsrc=None, pm25src=None,
                     pm1src=None, pm10src=None, timedatesrc=None,
@@ -454,22 +477,32 @@ class LASS(object):
         if humsrc:
             param, source = 'humidity',    humsrc
             self.source_dict[self._lookup[param][source.devkind]] = (source, param)
+            self.box.logger.info("LASS {}: humsrc: {} param: {}"
+                                 .format(self.name, source, param)) 
 
         if tempsrc:
             param, source = 'temperature', tempsrc
             self.source_dict[self._lookup[param][source.devkind]] = (source, param)
+            self.box.logger.info("LASS {}: tempsrc: {} param: {}"
+                                 .format(self.name, source, param)) 
        
         if pm25src:
             param, source = 'PM25',        pm25src
             self.source_dict[self._lookup[param][source.devkind]] = (source, param)
+            self.box.logger.info("LASS {}: pm25src: {} param: {}"
+                                 .format(self.name, source, param)) 
              
         if pm1src:
             param, source = 'PM1',        pm1src
             self.source_dict[self._lookup[param][source.devkind]] = (source, param)
+            self.box.logger.info("LASS {}: pm1src: {} param: {}"
+                                 .format(self.name, source, param)) 
        
         if pm10src:
             param, source = 'PM10',        pm10src
             self.source_dict[self._lookup[param][source.devkind]] = (source, param)
+            self.box.logger.info("LASS {}: pm10src: {} param: {}"
+                                 .format(self.name, source, param)) 
 
         if not gassensors:
             gassensors = []
@@ -477,6 +510,8 @@ class LASS(object):
         for sensor in gassensors:
             param, source, gasname = 'ppm', sensor, sensor.devkind
             self.source_dict[self._gaslookup[gasname]] = (source, param)
+            self.box.logger.info("LASS {}: gas sensor: {} param: {}, gasname: {}"
+                                 .format(self.name, source, param, gasname)) 
 
         if type(GPSsrc) is str and GPSsrc.lower() == 'static':
             self.source_dict['gps_lat'] = ('static', 'static_lat')
@@ -485,6 +520,9 @@ class LASS(object):
             self.source_dict['gps_fix'] = ('static', 'static_fix')
             self.source_dict['gps_num'] = ('static', 'static_num')
             self.fmt_opt           = 1 # (0) default (real GPS) (1) gps information invalid   always 0 or 1
+            self.box.logger.info("LASS {}: GPSsrc: {}:"
+                                 .format(self.name, 'static'))
+            
         else:
             self.source_dict['gps_lat'] = (GPSsrc,   'latitude' )
             self.source_dict['gps_lon'] = (GPSsrc,   'longitude')
@@ -493,15 +531,21 @@ class LASS(object):
             self.source_dict['gps_num'] = (GPSsrc,   'satnum'   )
             self.source_dict['gps_num'] = (GPSsrc,   'satnum'   )
             self.fmt_opt           = 0 # (0) default (real GPS) (1) gps information invalid   always 0 or 1
+            self.box.logger.info("LASS {}: GPSsrc: {}:"
+                                 .format(self.name, GPSsrc))
 
         if type(timedatesrc) is str and timedatesrc.lower() == 'system':
             self.source_dict['time']  = ('system',  'timestr')
             self.source_dict['date']  = ('system',  'datestr')
             self.source_dict['ticks'] = ('system',  'tickstr')
+            self.box.logger.info("LASS {}: timedatesrc: {}:"
+                                 .format(self.name, 'system'))
         else:
             self.source_dict['time']  = (timedatesrc, 'timestr')
             self.source_dict['date']  = (timedatesrc, 'datestr')
             self.source_dict['ticks'] = ('system',    'tickstr')
+            self.box.logger.info("LASS {}: timedatesrc: {}:"
+                                 .format(self.name, timedatesrc))
 
         # 's_gx' g0,  g1, g2,  g3,   g4,    g5,  g6  g7,     g8,              gg
         # 's_gx' NH3, CO, NO2, C3H8, C4H10, CH4, H2, C2H5OH, SenseAir S8 CO2, TVOC
@@ -567,6 +611,7 @@ class LASS(object):
 
     def _generate_LASS_string(self):
         self.LASS_string =  '|'.join([''] + self.LASS_data + [''])
+        self.box.logger.info("LASS_string '{}'".format(self.LASS_string))  
         return self.LASS_string 
 
     def send_to_LASS(self):
@@ -610,17 +655,20 @@ class LASS(object):
 
 class LOG(object):
 
-    def __init__(self, box, logfilename, name=None):
+    def __init__(self, box, filename, name=None):
         
         self.box                = box
         self.name               = name
-        self.logfilename        = logfilename
+        self.filename           = filename 
         self.devices            = []
+
+        self.box.logger.info("LOG '{}' __init__ logfilename: '{}'"
+                             .format(self.name, self.filename))
 
         self.t_previous_sysinfo = None
 
         headerlines = []
-        headerlines.append('New log file, filename = ' + str(self.logfilename))
+        headerlines.append('New log file, filename = ' + str(self.filename))
         headerlines.append('New log file, log name = ' + str(self.name))
 
         datetimedict = self.box.get_system_timedate_dict()
@@ -628,10 +676,14 @@ class LOG(object):
         headerlines.append('Time = ' + datetimedict['timestr'])
         headerlines.append('Date = ' + datetimedict['datestr'])
         headerlines.append('box name = ' + str(self.box.name))
-        headerlines.append('box MAC address = ' + str(self.box.macaddress))
+        try:
+            headerlines.append('box MAC address = ' +
+                               str(self.box.macaddress))
+        except:
+            pass
 
-        with open(logfilename, 'w') as outfile:
-            outfile.writelines(headerlines)
+        with open(filename, 'w') as outfile:
+            outfile.writelines([line + '\n' for line in headerlines])
             
     def __repr__(self):
         return ('{self.__class__.__name__}({self.name})'
@@ -649,17 +701,21 @@ class LOG(object):
     def build_entry(self, sysinfo_interval=None):
         
         self.datadict = dict()
+        
+        self.datadict['buildtime'] = self.box.get_system_datetime()
 
         try:
             time_since = time.time() - self.t_previous_sysinfo
         except:
             time_since = None
 
-        if (time_since > sysinfo_interval) or (sysinfo_interval<=0):
+        if ((time_since == None) or
+            (time_since > sysinfo_interval) or
+            (sysinfo_interval<=0)):
 
-            sysinfo = self.box._get_some_system_info()
+            sysinfolines = self.box._get_some_system_info_lines()
 
-            self.datadict['sysinfo'] = sysinfo
+            self.datadict['sysinfolines'] = sysinfolines
 
             self.t_previous_sysinfo = time.time()
 
@@ -667,7 +723,7 @@ class LOG(object):
 
             devdict = dict()
 
-            self.datadict[device.devkind] = devdict
+            self.datadict[device.name] = devdict
 
             for dk in datakeys:
 
@@ -679,26 +735,75 @@ class LOG(object):
     def save_entry(self):
 
         lines = []
-        for devkind, deviceinfo in self.datadict.items():
-            lines.append('\n')
-            lines.append('device name: ' + devkind + '\n')
+        try:
+            lines += self.datadict.pop('sysinfolines')
+        except:
+            pass
+        for key, info in self.datadict.items():
+            lines += [key]
+            if type(info) is list:
+                lines += info
+            elif type(info) is str:
+                lines += [info]
+            elif type(info) is dict:
+                for datakey, data in info.items():
+                    lines += ['  datakey: ' + datakey + ' = ' + str(data)]
 
-            if type(deviceinfo) is dict:
-                for datakey, data in deviceinfo.items():
-                    lines.append('  datakey: ' + datakey + ' = ' + str(data) + '\n')
-            elif type(deviceinfo) is str:
-                lines.append(deviceinfo)
-
-        with open(self.logfilename, 'a') as outfile:   # note, append!!!
-            outfile.writelines(lines)
+        with open(self.filename, 'a') as outfile:   # note, append!!!
+            outfile.writelines([line + '\n' for line in lines])
                 
         self.log_entry_lines = lines   # save for debugging
 
-    def build_and_save_entry(self):
+    def build_and_save_entry(self, sysinfo_interval=None):
 
-        self.build_entry()
+        self.build_entry(sysinfo_interval=sysinfo_interval)
         self.save_entry()
         
+
+class GPIO_DEVICE(object):
+
+    def __init__(self, box, name=None):
+
+        self.box              = box
+        self.pi               = self.box.pi
+        self.bus              = self.box.bus
+        self.name             = name
+        self.datadict         = dict()
+        self.statistics       = {'nreads':0, 'ngoodreads':0, 
+                                 'nbadreads':0} # minimal each may have more
+        self.last_twenty_stats = []
+
+        self.box.add_device(self)
+
+        donts = ('self', 'name', 'box')
+        for dont in donts:
+            try:
+                self.instance_things.pop(dont)
+            except:
+                pass
+
+    def __repr__(self):
+                return ('{self.__class__.__name__}({self.name})'
+                        .format(self=self))
+
+    def get_my_current_instance_info(self):
+
+        current_info = dict()
+        for key in self.instance_things:
+            current_info[key] = getattr(self, key)
+        return current_info
+
+    def get_my_original_instance_info(self):
+
+        original_info = self.instance_things.copy()
+
+        return original_info
+
+    def _last_twenty_increment(self): 
+
+        self.last_twenty_stats = ([self.last_read_is_good] +
+                                  self.last_twenty_stats[:19])
+
 
 class Dummy(GPIO_DEVICE):
 
@@ -710,12 +815,25 @@ class Dummy(GPIO_DEVICE):
 
         GPIO_DEVICE.__init__(self, box, name)
 
+        self.box.logger.info("Dummy '{}' __init__".format(self.name))  
+
         if type(dummydatadict) == dict:
             self.datadict.update(dummydatadict)
 
-    def read(self):
+    def read(self): # doesn't really read anything
 
-        self.datadict['read_time']        = time.time()
+        self.last_read_is_good                = False
+        self.statistics['nreads']            += 1 
+
+        self.datadict['read_time']            = time.time()
+
+        self.last_read_is_good                = True # it's a dummy!       
+        if self.last_read_is_good:
+            self.statistics['ngoodreads']    += 1 
+        else: 
+            self.statistics['nbadreads']     += 1 
+
+        self._last_twenty_increment()
 
 
 class G3bb(GPIO_DEVICE):
@@ -728,6 +846,8 @@ class G3bb(GPIO_DEVICE):
 
         GPIO_DEVICE.__init__(self, box, name)
 
+        self.box.logger.info("G3bb '{}' __init__".format(self.name))  
+
         if collect_time == None:
             collect_time      = 3.0
 
@@ -739,6 +859,9 @@ class G3bb(GPIO_DEVICE):
     def read(self):
 
         self.datadict = dict()    # assures the old dict has been cleared.
+
+        self.last_read_is_good            = False
+        self.statistics['nreads']        += 1
 
         try:
             self.pi.bb_serial_read_close(self.DATA)
@@ -782,9 +905,14 @@ class G3bb(GPIO_DEVICE):
                     self.datadict['PM1']      = PM1
                     self.datadict['PM25']     = PM25
                     self.datadict['PM10']     = PM10
-                else:
-                    three = None
-                    self.datadict['three']    = three    # for debugging
+                    self.last_read_is_good    = True        
+
+        if self.last_read_is_good:
+            self.statistics['ngoodreads']    += 1 
+        else: 
+            self.statistics['nbadreads']     += 1 
+
+        self._last_twenty_increment() 
                     
 
 class GPSbb(GPIO_DEVICE):
@@ -796,6 +924,8 @@ class GPSbb(GPIO_DEVICE):
         self.instance_things = locals()
 
         GPIO_DEVICE.__init__(self, box, name)
+
+        self.box.logger.info("GPSbb '{}' __init__".format(self.name))  
 
         if collect_time == None:
             collect_time = 3.0
@@ -856,6 +986,9 @@ class GPSbb(GPIO_DEVICE):
 
         self.datadict = dict()    # assures the old dict has been cleared.
 
+        self.last_read_is_good                = False
+        self.statistics['nreads']            += 1 
+
         self.datadict['start_read_time']      = time.time()
         all_lines                             = self._read_chunk()
         self.datadict['stop_read_time']       = time.time()
@@ -908,6 +1041,7 @@ class GPSbb(GPIO_DEVICE):
                 self.datadict['fix']               = fix
                 self.datadict['n_sats']            = n_sats
                 self.datadict['coor_time_string']  = coor_time_string
+                self.last_read_is_good             = True        
 
                 if alti_unit.lower() == 'm':
                     self.datadict['altitude_meters'] = alti_num
@@ -925,6 +1059,14 @@ class GPSbb(GPIO_DEVICE):
                 self.datadict['h_geoid']        = h_geoid
                 self.datadict['h_geoid_units']  = h_geoid_unit
 
+        if self.last_read_is_good:
+            self.statistics['ngoodreads']      += 1 
+        else: 
+            self.statistics['nbadreads']       += 1 
+
+        self._last_twenty_increment()
+
+        # continue with non-critical, additional processing 
         for line in speed_lines:
             speed, speed_units   = line[7:9]
 
@@ -962,8 +1104,7 @@ class DHT22bb(GPIO_DEVICE):
 
         GPIO_DEVICE.__init__(self, box, name)
 
-        print "    ## ## I have a pi!"   # heytoday deleteme!
-        print self.pi
+        self.box.logger.info("DHT22bb '{}' __init__".format(self.name))  
 
         self.DATA  = DATA
         self.POWER = POWER
@@ -1018,6 +1159,9 @@ class DHT22bb(GPIO_DEVICE):
             self.pi.set_watchdog(self.DATA, 0)    # deactivate watchdog
 
     def read(self):
+
+        self.last_read_is_good                 = False
+        self.statistics['nreads']             += 1 
 
         self.datadict = dict()     # clear old data
         self.diffs    = []         # clear old data 
@@ -1077,10 +1221,18 @@ class DHT22bb(GPIO_DEVICE):
 
                 self.datadict['humidity']    = humidity
                 self.datadict['temperature'] = temperature
+                self.last_read_is_good            = True        
 
         else:
             # print "diffs_length is not 43, it's ", diffs_length
             pass
+
+        if self.last_read_is_good:
+            self.statistics['ngoodreads']        += 1 
+        else:
+            self.statistics['nbadreads']         += 1 
+
+        self._last_twenty_increment()
 
     # CANCEL THE WATCHDOG ON EXIT!
     def cancel(self):
@@ -1102,6 +1254,8 @@ class OLEDi2c(GPIO_DEVICE):
         self.instance_things = locals()
 
         GPIO_DEVICE.__init__(self, box, name)
+
+        self.box.logger.info("OLEDi2c '{}' __init__".format(self.name))  
 
         self.screens        = []
         self.screendict     = dict()
@@ -1375,6 +1529,8 @@ class MCP3008bb(GPIO_DEVICE):
 
         GPIO_DEVICE.__init__(self, box, name)
 
+        self.box.logger.info("MCP3008bb '{}' __init__".format(self.name))  
+
         self.CSbar         = CSbar
         self.MISO          = MISO
         self.MOSI          = MOSI
@@ -1403,7 +1559,7 @@ class MCP3008bb(GPIO_DEVICE):
         self.pi.bb_spi_open(self.CSbar, self.MISO, self.MOSI, 
                        self.SCLK, self.SPI_baud, self.SPI_MODE)
 
-    def digitize_one_channel(self, n_channel, clear_datadict=False):
+    def _digitize_one_channel(self, n_channel, clear_datadict=False):
 
         if clear_datadict:
             self.datadict = dict()
@@ -1425,11 +1581,23 @@ class MCP3008bb(GPIO_DEVICE):
 
     def measure_one_voltage(self, channel, clear_datadict=False):
 
-        adc_value, adc_convert_time = self.digitize_one_channel(channel, clear_datadict)
+        self.last_read_is_good            = False
+        self.statistics['nreads']        += 1 
+
+        adc_value, adc_convert_time = self._digitize_one_channel(channel, clear_datadict)
 
         voltage = self.Vref * float(adc_value) / (2**self.nbits - 1.)
 
         self.datadict['channel ' + str(channel) + ' voltage'] = voltage
+
+        self.last_read_is_good                = True       
+
+        if self.last_read_is_good:
+            self.statistics['ngoodreads']    += 1
+        else: 
+            self.statistics['nbadreads']     += 1 
+
+        self._last_twenty_increment()
 
         return voltage, adc_value, adc_convert_time
 
@@ -1446,6 +1614,8 @@ class MOS_gas_sensor(GPIO_DEVICE):
         self.instance_things = locals()
 
         GPIO_DEVICE.__init__(self, box, name)
+
+        self.box.logger.info("MOS_gas_sensor '{}' __init__".format(self.name))
 
         if ADC not in self.box.devices:
             ADC            = self.box.get_device(ADC)
@@ -1470,6 +1640,9 @@ class MOS_gas_sensor(GPIO_DEVICE):
         self.Resistdata           = Resistdata
 
     def read(self):
+
+        self.last_read_is_good            = False
+        self.statistics['nreads']        += 1 
 
         self.datadict = dict()    # clear old data
 
@@ -1503,6 +1676,16 @@ class MOS_gas_sensor(GPIO_DEVICE):
         self.datadict['adc_value']        = adc_val
         self.datadict['adc_convert_time'] = adc_time
 
+        if ppm != None:
+            self.last_read_is_good            = True       
+
+        if self.last_read_is_good:
+            self.statistics['ngoodreads']    += 1 
+        else: 
+            self.statistics['nbadreads']     += 1 
+
+        self._last_twenty_increment()
+
 
 class SCREEN(object):
     
@@ -1527,12 +1710,12 @@ class SCREEN(object):
         self.add_field(f, xy0)
         return f
     
-    def add_field(self, f, xy0):   # heytoday this is updated!
+    def add_field(self, f, xy0): 
         self.fields[f] = xy0
         f.screens.append(self)
         return f
             
-    def get_field(self, fieldname):    # heytoday this is updated!
+    def get_field(self, fieldname): 
 
         try:
             field = [f for f in self.fields if f.name == fieldname][0]
@@ -1724,6 +1907,8 @@ def PiM25YAMLreader(fname):
 
         box = BOX(boxname, **boxargs)
         
+        box.logger.info("BOX '{}' instantiated from YAML file '{}'".format(box.name, fname))
+
         boxes.append(box)
 
         GPIO_devices = boxdef['GPIO devices']
