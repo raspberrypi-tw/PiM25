@@ -33,7 +33,7 @@ import time
 
 # make a box
 box = BOX('my box', use_WiFi=True,
-              use_SMBus=True, use_pigpio=True)
+          use_SMBus=True, use_pigpio=True)
 
 dht   = box.new_DHT22bb('my dht', DATA=25, POWER=8)
 g3    = box.new_G3bb('my g3', DATA=18, collect_time = 3.0)
@@ -45,20 +45,31 @@ CO2   = box.new_MOS_gas_sensor('my CO2', ADC=adc, channel=1,
                                Calibrationdata=[[100, 10000], [1000, 1000], [10000, 100]],
                                use_loglog=False, gasname='CO2',
                                atlimitsisokay=True)
-dummy = box.new_Dummy('my dummy', dummydatadict={'x':42})
+CO    = box.new_MOS_gas_sensor('my CO', ADC=adc, channel=2,
+                               Rseries=2000,
+                               Calibrationdata=[[100, 10000], [1000, 1000], [10000, 100]],
+                               use_loglog=False, gasname='CO',
+                               atlimitsisokay=True)
 
 mylogconfig = {dht:['temperature', 'humidity'], 
                g3:['PM25', 'PM1', 'PM10'],
-               CO2:['ppm'], dummy:['x']}
+               CO2:['ppm'], CO:['ppm']}
 
 mylog = box.new_LOG('mylog.txt', 'mylog')
 mylog.configure(mylogconfig)
 
 lass = box.new_LASS('mylass')
 lass.set_static_location(latlon=(25.033661, 121.564841), alt=550.)  # TPE101
+
 lass.set_sources(humsrc=dht, tempsrc=dht,
                  pm25src=g3, pm1src=g3, pm10src=g3, 
                  timedatesrc='system', GPSsrc='static')
+gpsstatic = {'latitude': lass.static_lat,
+             'longitude':lass.static_lon,
+             'altitude': lass.static_alt }
+# gps = new_GPSbb('my gps', DATA=16)  # for indoors use static GPS info
+gps      = box.new_Dummy('my gps', gpsstatic)
+timedate = box.new_Dummy('sys timedate')
 
 readables = [d for d in box.devices if hasattr(d, 'read')]
 
@@ -75,9 +86,14 @@ for thing in ('show_white', 'show_black', 'show_gray'):
     getattr(oled, thing)()
 
 while True:
-    print "loop!" 
+    print "loop!"
+    oled.show_image('TPE101small.png', resize_method='fit',
+                    conversion_method='threshold', threshold=60)
     for d in readables:
         d.read()
+    systimedic = box.get_system_timedate_dict()
+    timedate.datadict.update(systimedic)
+
         
     mylog.build_and_save_entry(sysinfo_interval=10)
 
@@ -85,7 +101,8 @@ while True:
 
     print lass.LASS_string
 
-    for s in oled.screens:
-        s.update()
-        oled.show_screen(s)
-        time.sleep(1)
+    for cycle in range(2):
+        for s in oled.screens:
+            s.update()
+            oled.show_screen(s)
+            time.sleep(3)

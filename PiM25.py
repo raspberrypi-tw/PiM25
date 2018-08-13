@@ -1409,6 +1409,18 @@ class OLEDi2c(GPIO_DEVICE):
 
         print "OLED inited!"
 
+    def display_off(self):
+
+        self.initiate()
+
+        time.sleep(0.2)
+
+        for thing in (self.SSD1306_DISPLAYOFF, ):
+
+            self.bus.write_byte_data(self.ADDR, self.cmdmode, thing)
+
+            time.sleep(0.2)
+
     def display_on(self):
 
         self.initiate()
@@ -1467,16 +1479,20 @@ class OLEDi2c(GPIO_DEVICE):
         allbytez = sum(Zbinpages, [])
         return allbytez
 
-    def get_screen(self, screenname): # heytoday this is updated! 
+    def get_screen(self, scrn): # heytoday this is updated!
 
-        try:
-            device = [s for s in self.screens if s.name == screenname][0]
-        except:
-            print " oh, I couldn't find s.name = ", screenname
-            print " all of the names are: ", [s.name for s in self.screens]
-            device = None
+        if scrn in self.screens:
+            sc = scrn
+        else:
+            try:
+                sc = [s for s in self.screens if
+                       s.name == scrn][0]
+            except:
+                print " oh, I couldn't find s.name = ", scrn
+                print " all of the names are: ", [s.name for s in self.screens]
+                sc = None
             
-        return device
+        return sc
         
     def show_screen(self, showscreen): # heytoday this is updated!
 
@@ -1509,7 +1525,7 @@ class OLEDi2c(GPIO_DEVICE):
         showscreen = self.get_screen(showscreen)
 
         if showscreen:
-            showscreen.update_all()
+            showscreen.update()
             self.show_screen(showscreen)
 
     def array_stats(self):
@@ -1517,6 +1533,109 @@ class OLEDi2c(GPIO_DEVICE):
         print "self.array.min(), self.array.max(): ", self.array.min(), self.array.max()
         print "self.array.shape, self.array.dtype: ", self.array.shape, self.array.dtype
 
+    def _embed(self, small_array, big_array, big_index):
+        """Overwrites values in big_array starting at big_index with those in small_array"""
+        slices = [np.s_[i:i+j] for i,j in zip(big_index, small_array.shape)]
+        big_array[slices] = small_array
+        try:
+            big_array[slices] = small_array
+        except:
+            print "field embed failed"
+
+    def show_image(self, filename, resize_method, conversion_method, threshold=None):
+
+        self.img0   = Image.open(filename)
+        w0, h0 = self.img0.size
+
+        self.box.logger.info("showimage opened size w0, h0 {}".format((w0, h0)))  
+        print "showimage opened size w0, h0 {}".format((w0, h0))
+
+        if resize_method == 'stretch':
+
+            new_size = (self.nx, self.ny)
+
+            self.imgr = self.img0.resize(new_size)
+
+            self.box.logger.info("showimage new_size stretch {}".format(new_size))  
+            print "showimage new_size stretch {}".format(new_size)
+
+        elif resize_method == 'fit':
+
+            wscale = float(self.nx)/float(w0)
+            hscale = float(self.ny)/float(h0)
+
+            if hscale <= wscale:
+                print "hscale <= wscale"
+                new_size = (int(w0*hscale), self.ny)
+            else:
+                print "hscale > wscale"
+                new_size = (self.nx, int(h0*hscale))
+
+            self.imgr = self.img0.resize(new_size)
+
+            self.box.logger.info("showimage new_size fit {}".format(new_size))
+            print "showimage new_size fit {}".format(new_size)
+
+        else:
+
+            self.imgr = None
+
+            self.box.logger.error("showimage new_size failed")  
+            print "showimage new_size failed"
+
+        if self.imgr:
+
+            if conversion_method in ('default', 'dither'):
+
+                self.imgc  = self.imgr.convert("1")
+
+                self.box.logger.info("showimage convert default".format(new_size))
+                print "showimage convert default".format(new_size)
+
+            elif conversion_method in ('threshold', ):
+
+                self.imgr8 = self.imgr.convert("L")
+                self.imgc  = self.imgr8.point(lambda x: 0 if x < threshold else 1, mode='1')
+
+                self.box.logger.info("showimage convert threshold".format(new_size))
+                print "showimage convert threshold".format(new_size)
+
+        else:
+
+            imgc = None
+
+            self.box.logger.error("showimage conversion failed")
+            print "showimage conversion failed"
+
+        if self.imgc:
+            
+            wni, hni = self.imgc.size
+            array    = np.array(list(self.imgc.getdata())).reshape(hni, wni)
+
+            bigarray = np.zeros(self.ny*self.nx, dtype=int).reshape(self.ny, self.nx)
+
+            sa0, sa1 = array.shape
+            sb0, sb1 = bigarray.shape
+
+            hoff = max(0, (sb0-sa0)/2-1)
+            woff = max(0, (sb1-sa1)/2-1)
+            print "hoff = ", hoff
+            print "woff = ", woff
+            
+            self._embed(array, bigarray, (hoff, woff))
+
+            print "bigarray.shape: ", bigarray.shape
+            arrayf = bigarray.astype(float)
+            arrayf = arrayf / arrayf.max()
+
+            self.array = bigarray.copy()
+
+            self.show_array()
+            # plt.figure()
+            # plt.imshow(arrayf)
+            # plt.show()
+
+    
 
 class MCP3008bb(GPIO_DEVICE):
     
@@ -1669,6 +1788,9 @@ class MOS_gas_sensor(GPIO_DEVICE):
             if ppm <= 0 or ppm <= min(self.ppmdata) or ppm >= max(self.ppmdata):
                 ppm = None
 
+        if ppm != None:
+            ppm = int(ppm)
+
         self.datadict['read_time']        = time.time()
         self.datadict['ppm']              = ppm
         self.datadict['R_sensor']         = R_sensor
@@ -1762,6 +1884,97 @@ class SCREEN(object):
         self.update()
         self.preview_me()
 
+
+    def show_image(self, filename, resize_method, conversion_method, threshold=None):
+
+        img0   = Image.open(filename)
+        w0, h0 = img0.width, img0.height
+
+        self.box.logger.info("showimage opened size w0, h0 {}".format((w0, h0)))  
+        print "showimage opened size w0, h0 {}".format((w0, h0))
+
+        if resize_method == 'stretch':
+
+            new_size = (self.w, self.h)
+
+            imgr = img0.resize(new_size)
+
+            self.box.logger.info("showimage new_size stretch {}".format(new_size))  
+            print "showimage new_size stretch {}".format(new_size)
+
+        elif resize_method == 'fit':
+
+            wscale = float(self.nx)/float(w0)
+            hscale = float(self.ny)/float(h0)
+
+            if hscale <= wscale:
+                print "hscale <= wscale"
+                new_size = (int(w0*hscale), self.ny)
+            else:
+                print "hscale > wscale"
+                new_size = (self.nx, int(h0*hscale))
+
+            imgr = img0.resize(new_size)
+
+            self.box.logger.info("showimage new_size fit {}".format(new_size))
+            print "showimage new_size fit {}".format(new_size)
+
+        else:
+
+            imgr = None
+
+            self.box.logger.error("showimage new_size failed")  
+            print "showimage new_size failed"
+
+        if imgr:
+
+            if conversion_method in ('default', 'dither'):
+
+                imgc  = imgr.convert("1")
+
+                self.box.logger.info("showimage convert default".format(new_size))
+                print "showimage convert default".format(new_size)
+
+            elif conversion_method in ('threshold', ):
+
+                imgr8 = imgr.convert("L")
+                imgc  = imgr8.point(lambda x: 0 if x < threshold else 1, mode='1')
+
+                self.box.logger.info("showimage convert threshold".format(new_size))
+                print "showimage convert threshold".format(new_size)
+
+        else:
+
+            imgc = None
+
+            self.box.logger.error("showimage conversion failed")
+            print "showimage conversion failed"
+
+        if imgc:
+            
+            wni, hni = imgc.width, imgc.height
+            array    = np.array(list(imgc.getdata())).reshape(hni, wni)
+
+            bigarray = np.zeros(self.h*self.w, dtype=int).reshape(self.h, self.w)
+
+            sa0, sa1 = array.shape
+            sb0, sb1 = bigarray.shape
+
+            hoff = max(0, (sb0-sa0)/2-1)
+            woff = max(0, (sb1-sa1)/2-1)
+            print "hoff = ", hoff
+            print "woff = ", woff
+            
+            _embed(array, bigarray, (hoff, woff))
+
+            print "bigarray.shape: ", bigarray.shape
+            arrayf = bigarray.astype(float)
+            arrayf = arrayf / arrayf.max()
+            plt.figure()
+            plt.imshow(arrayf)
+            plt.show()
+
+    
 
 class FIELD(object):
     

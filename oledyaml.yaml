@@ -1,31 +1,109 @@
 TandH:
   fields:
     temp:
-      args: {'wh':[120, 24],
-             'fmt':'T(C) {:0.1f}, H(%) {:0.1f}', 'fontdef':'FreeSansBold.ttf',
-             'fontsize':14, 'info':[['my dht', 'temperature'], ['my dht', 'humidity']]}
-      xy0: [2, 5]
+      args: {'wh':[120, 30],
+             'fmt':'{:0.1f}°C', 'fontdef':'Roboto-Regular.ttf',
+             'fontsize':28, 'info':[['my dht', 'temperature']]}
+      xy0: [2, 1]
+    humid:
+      args: {'wh':[120, 30],
+             'fmt':'{:0.0f}%', 'fontdef':'Roboto-Regular.ttf',
+             'fontsize':28, 'info':[['my dht', 'humidity']]}
+      xy0: [2, 33]
 particles:
   fields:
-    PMsmall:
-      args: {'wh':[120, 24],
-             'fmt':'PM1 {:0.0f}, PM10 {:0.0f}', 'fontdef':'FreeSansBold.ttf',
-             'fontsize':14, 'info':[['my g3', 'PM1'], ['my g3', 'PM10']]}
-      xy0: [2, 5]
-    PMbig:
-      args: {'wh':[120, 24],
-             'fmt':'PM25 {:0.0f}', 'fontdef':'FreeSansBold.ttf',
-             'fontsize':20, 'info':[['my g3', 'PM25']]}
-      xy0: [2, 35]
+    PMbigtext:
+      args: {'wh':[60, 20],
+             'fmt':'PM2.5', 'fontdef':'Roboto-Regular.ttf',
+             'fontsize':18, 'threshold':30, 'info':[['my g3', 'PM25']]}
+      xy0: [1, 7]
+    PMbigvalue:
+      args: {'wh':[60, 30],
+             'fmt':'{:d}', 'fontdef':'Roboto-Regular.ttf',
+             'fontsize':24, 'threshold':30, 'info':[['my g3', 'PM25']]}
+      xy0: [65, 1]
+    PMonetext:
+      args: {'wh':[60, 18],
+             'fmt':'PM1', 'fontdef':'Roboto-Regular.ttf',
+             'fontsize':14, 'info':[['my g3', 'PM1']]}
+      xy0: [2, 27]
+    PMonevalue:
+      args: {'wh':[56, 18],
+             'fmt':'{:d}', 'fontdef':'Roboto-Regular.ttf',
+             'fontsize':14, 'info':[['my g3', 'PM1']]}
+      xy0: [69, 27]
+    PMtentext:
+      args: {'wh':[60, 18],
+             'fmt':'PM10', 'fontdef':'Roboto-Regular.ttf',
+             'fontsize':14, 'info':[['my g3', 'PM10']]}
+      xy0: [2, 44]
+    PMtenvalue:
+      args: {'wh':[56, 18],
+             'fmt':'{:d}', 'fontdef':'Roboto-Regular.ttf',
+             'fontsize':14, 'info':[['my g3', 'PM10']]}
+      xy0: [69, 44]
 gasses:
   fields:
-    CO2a:
-      args: {'wh':[120, 24],
-             'fmt':'CO2 ppm {:0.1f}', 'fontdef':'FreeSansBold.ttf',
-             'fontsize':16, 'threshold':120, 'info':[['my CO2', 'ppm']]}
-      xy0: [2, 5]
-    CO2b:
-      args: {'wh':[120, 24],
-             'fmt':'CO2 ppm {:0.1f}', 'fontdef':'FreeSansBold.ttf',
-             'fontsize':16, 'info':[['my CO2', 'ppm']]}
-      xy0: [2, 40]
+    CO2label:
+      args: {'wh':[40, 24],
+             'fmt':'CO2', 'fontdef':'Roboto-Regular.ttf',
+             'fontsize':20, 'threshold':30, 'info':[['my CO2', 'ppm']]}
+      xy0: [2, 2]
+    CO2value:
+      args: {'wh':[56, 24],
+             'fmt':'{:4d}', 'fontdef':'DroidSansMono.ttf',
+             'fontsize':20, 'threshold':30, 'info':[['my CO2', 'ppm']]}
+      xy0: [46, 2]
+    CO2ppmtext:
+      args: {'wh':[26, 18],
+             'fmt':'ppm', 'fontdef':'default',
+             'fontsize':12, 'info':[['my CO2', 'ppm']]}
+      xy0: [100, 13]
+    COlabel:
+      args: {'wh':[40, 24],
+             'fmt':'CO', 'fontdef':'Roboto-Regular.ttf',
+             'fontsize':20, 'threshold':30, 'info':[['my CO', 'ppm']]}
+      xy0: [2, 22]
+    COvalue:
+      args: {'wh':[56, 24],
+             'fmt':'{:4d}', 'fontdef':'DroidSansMono.ttf',
+             'fontsize':20, 'threshold':30, 'info':[['my CO', 'ppm']]}
+      xy0: [46, 22]
+    COppmtext:
+      args: {'wh':[26, 18],
+             'fmt':'ppm', 'fontdef':'default',
+             'fontsize':12, 'info':[['my CO', 'ppm']]}
+      xy0: [100, 33]
+GPS:
+  fields:
+    latlabel:
+      args: {'wh':[40, 16],
+             'fmt':'Lat', 'fontdef':'Roboto-Regular.ttf',
+             'fontsize':15, 'threshold':30, 'info':[['my gps', 'latitude']]}
+      xy0: [1, 0]
+    latvalue:
+      args: {'wh':[80, 16],
+             'fmt':'{:0.5f}', 'fontdef':'Roboto-Regular.ttf',
+             'fontsize':15, 'threshold':30, 'info':[['my gps', 'latitude']]}
+      xy0: [45, 1]
+    lonlabel:
+      args: {'wh':[40, 16],
+             'fmt':'Lon', 'fontdef':'Roboto-Regular.ttf',
+             'fontsize':15, 'threshold':30, 'info':[['my gps', 'latitude']]}
+      xy0: [1, 16]
+    lonvalue:
+      args: {'wh':[80, 16],
+             'fmt':'{:0.5f}', 'fontdef':'Roboto-Regular.ttf',
+             'fontsize':15, 'threshold':30, 'info':[['my gps', 'longitude']]}
+      xy0: [45, 16]
+    time:
+      args: {'wh':[104, 16],
+             'fmt':'{}', 'fontdef':'Roboto-Regular.ttf',
+             'fontsize':15, 'threshold':30, 'info':[['sys timedate', 'timestr']]}
+      xy0: [20, 32]
+    date:
+      args: {'wh':[104, 16],
+             'fmt':'{}', 'fontdef':'Roboto-Regular.ttf',
+             'fontsize':15, 'threshold':30, 'info':[['sys timedate', 'datestr']]}
+      xy0: [20, 48]
+
