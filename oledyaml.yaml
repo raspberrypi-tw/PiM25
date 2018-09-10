@@ -51,7 +51,7 @@ gasses:
       xy0: [2, 2]
     CO2value:
       args: {'wh':[56, 24],
-             'fmt':'{:4d}', 'fontdef':'DroidSansMono.ttf',
+             'fmt':'{:4d}', 'fontdef':'Roboto-Regular.ttf',
              'fontsize':20, 'threshold':30, 'info':[['my CO2', 'ppm']]}
       xy0: [46, 2]
     CO2ppmtext:
@@ -66,7 +66,7 @@ gasses:
       xy0: [2, 22]
     COvalue:
       args: {'wh':[56, 24],
-             'fmt':'{:4d}', 'fontdef':'DroidSansMono.ttf',
+             'fmt':'{:4d}', 'fontdef':'Roboto-Regular.ttf',
              'fontsize':20, 'threshold':30, 'info':[['my CO', 'ppm']]}
       xy0: [46, 22]
     COppmtext:
