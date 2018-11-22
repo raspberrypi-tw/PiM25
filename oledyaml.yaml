@@ -42,38 +42,6 @@ particles:
              'fmt':'{:d}', 'fontdef':'Roboto-Regular.ttf',
              'fontsize':14, 'info':[['my g3', 'PM10']]}
       xy0: [69, 44]
-gasses:
-  fields:
-    CO2label:
-      args: {'wh':[40, 24],
-             'fmt':'CO2', 'fontdef':'Roboto-Regular.ttf',
-             'fontsize':20, 'threshold':30, 'info':[['my CO2', 'ppm']]}
-      xy0: [2, 2]
-    CO2value:
-      args: {'wh':[56, 24],
-             'fmt':'{:4d}', 'fontdef':'Roboto-Regular.ttf',
-             'fontsize':20, 'threshold':30, 'info':[['my CO2', 'ppm']]}
-      xy0: [46, 2]
-    CO2ppmtext:
-      args: {'wh':[26, 18],
-             'fmt':'ppm', 'fontdef':'default',
-             'fontsize':12, 'info':[['my CO2', 'ppm']]}
-      xy0: [100, 13]
-    COlabel:
-      args: {'wh':[40, 24],
-             'fmt':'CO', 'fontdef':'Roboto-Regular.ttf',
-             'fontsize':20, 'threshold':30, 'info':[['my CO', 'ppm']]}
-      xy0: [2, 22]
-    COvalue:
-      args: {'wh':[56, 24],
-             'fmt':'{:4d}', 'fontdef':'Roboto-Regular.ttf',
-             'fontsize':20, 'threshold':30, 'info':[['my CO', 'ppm']]}
-      xy0: [46, 22]
-    COppmtext:
-      args: {'wh':[26, 18],
-             'fmt':'ppm', 'fontdef':'default',
-             'fontsize':12, 'info':[['my CO', 'ppm']]}
-      xy0: [100, 33]
 GPS:
   fields:
     latlabel:

@@ -38,6 +38,8 @@ import yaml
 
 import time, datetime
 import numpy as np
+import paho.mqtt.client as mqtt
+import json
 
 from binascii import hexlify
 from PIL import Image, ImageDraw, ImageFont
@@ -421,6 +423,13 @@ class LASS(object):
         self.static_fix       = 0
         self.static_num       = 0
 
+        # MQTT
+        self.client = mqtt.Client()
+        self.host = 'gpssensor.ddns.net'
+        self.topic = 'LASS/Test/PM25'
+        self.client.connect(self.host, 1883, 60)
+
+
     def __repr__(self):
         return ('{self.__class__.__name__}({self.name})'
                 .format(self=self))
@@ -608,6 +617,7 @@ class LASS(object):
         self.LASS_data.append('s_4=' + str(self.CPU_utilization))
 
         self._generate_LASS_string() 
+        self.send_to_LASS()
 
     def _generate_LASS_string(self):
         self.LASS_string =  '|'.join([''] + self.LASS_data + [''])
@@ -615,8 +625,13 @@ class LASS(object):
         return self.LASS_string 
 
     def send_to_LASS(self):
+        print "=============================="
+        print time.ctime(), self.LASS_string
+        self.box.logger.info("send_to_LASS: {}".format(self.LASS_string))
+        self.client.publish(self.topic, "%s" % ( self.LASS_string ))
+        print "=============================="
         # return self.LASS_string
-        pass                      #   FIX ME!#   FIX ME!
+
 
     def build_and_send_to_LASS(self):
         self.build_entry()

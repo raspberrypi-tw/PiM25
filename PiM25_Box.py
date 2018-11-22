@@ -29,7 +29,7 @@
 #                    (pin 39)  |(pin 40)                       #                  
 ################################################################
 
-from PiM25updated42 import BOX
+from PiM25 import BOX
 import time
 
 # make a box
@@ -39,7 +39,7 @@ box = BOX('my box', use_WiFi=False,
 dht   = box.new_DHT22bb('my dht', DATA=26, POWER=19)
 g3    = box.new_G3bb('my g3', DATA=24, collect_time = 3.0)
 # gps   = box.new_GPSbb('my gps', DATA=12, collect_time = 3.0) for now use static dummy
-oled  = box.new_OLEDi2c('my oled', rotate180=True)
+oled  = box.new_OLEDi2c('my oled')
 adc   = box.new_MCP3008bb('my adc', MISO=22, MOSI=27,
                           CSbar=17, SCLK=10, Vref=3.3)
 
@@ -67,7 +67,7 @@ lass.set_static_location(latlon=(25.033661, 121.564841), alt=550.)  # TPE101
 
 lass.set_sources(humsrc=dht, tempsrc=dht,
                  pm25src=g3, pm1src=g3, pm10src=g3, 
-                 timedatesrc='system', GPSsrc=gps)
+                 timedatesrc='system')
 gpsstatic = {'latitude': lass.static_lat,
              'longitude':lass.static_lon,
              'altitude': lass.static_alt }
@@ -80,30 +80,28 @@ for d in readables:
     d.read()
     print d, 'read is good: ', d.last_read_is_good
 
-if True:
-    oled.YAMLsetup('oledyaml.yaml')
 
-oled.initiate()
-oled.display_on()
-for thing in ('show_white', 'show_black', 'show_gray'):
-    getattr(oled, thing)()
+#oled.YAMLsetup('oledyaml.yaml')
+#oled.initiate()
+#oled.display_on()
+#for thing in ('show_white', 'show_black', 'show_gray'):
+#    getattr(oled, thing)()
 
 while True:
     print "loop!"
-    oled.show_image('TPE101small.png', resize_method='fit',
-                    conversion_method='threshold', threshold=60)
+    #oled.show_image('pim25b.bmp', resize_method='fit',
+    #                conversion_method='threshold', threshold=60)
     for d in readables:
         d.read()
     systimedic = box.get_system_timedate_dict()
     timedate.datadict.update(systimedic)
-
         
     mylog.build_and_save_entry(sysinfo_interval=10)
 
     lass.build_entry()
 
     for cycle in range(2):
-        for s in oled.screens:
-            s.update()
-            oled.show_screen(s)
+    #    for s in oled.screens:
+    #        s.update()
+    #        oled.show_screen(s)
             time.sleep(1)

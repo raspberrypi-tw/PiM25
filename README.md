@@ -33,6 +33,14 @@ There are a few ways.
 
 You can also combine any or all of the above!
 
+# install required package and python module
+```shell  
+$ sudo apt-get update
+$ sudo apt-get install -y python-dev python-pip python-matplotlib mosquitto mosquitto-clients
+$ sudo pip install numpy paho-mqtt psutil ymlconfig
+$ sudo pip3 install paho-mqtt
+```
+
 Once you are done, you can SAVE your configuration as a .yaml file using PiM25.PiM25YAMLwriter(‘filename.yaml’) That way you can “rebuild” your box the next time you start your project, exactly as it existed when you were last developing it.
 
 METHOD 1: Python script.
