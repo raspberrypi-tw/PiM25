@@ -5,15 +5,15 @@
 ##############################################################             
 #           Raspberry Pi 3 GPIO Pinout;           Corner --> #
 #                    (pin 1)  | (pin 2)                      #                  
-#  OLED/GPS Vcc       +3.3V   |  +5.0V    Gas sensor GND     #
-#  OLED SDA          GPIO  2  |  +5.0V    PM25 G3 pin 1 Vcc b#     
-#  OLED SCL          GPIO  3  |  GND      PM25 G3 pin 2 GND o#
+#  OLED/GPS Vcc       +3.3V   |  +5.0V    GPS NEO6 Vcc       #
+#  OLED SDA          GPIO  2  |  +5.0V    PM25 G5 pin 1 Vcc b#     
+#  OLED SCL          GPIO  3  |  GND      PM25 G5 pin 2 GND o#
 #                    GPIO  4  | UART TX                      #
 #  OLED/Gas GND       GND     | UART RX                      #
-#                    GPIO 17  | GPIO 18   PM25 G3 pin 5 TX  g#
-#                    GPIO 27  |  GND                         #
+#                    GPIO 17  | GPIO 18   GPS NEO6 pin 5 TX  #
+#                    GPIO 27  |  GND      GPS NEO6 GND       #
 #                    GPIO 22  | GPIO 23                      #
-#r MCP3008 Vcc/Vref   +3.3V   | GPIO 24                      #
+#r MCP3008 Vcc/Vref   +3.3V   | GPIO 24   PM25 G5 pin 5 TX  g#
 #                    GPIO 10  |  GND      DHT22 GND         g#
 #                    GPIO  9  | GPIO 25   DHT22 DATA        b#                      #
 #                    GPIO 11  | GPIO  8   DHT22 POWER       p#
@@ -318,10 +318,10 @@ class BOX(object):
             self.logger.info("device with unique name '{}' successfully added".format(device.name))  # heyhere
         
         
-    def new_G3bb(self, name, DATA=None, collect_time=None):
-        g3 = G3bb(box=self, name=name, DATA=DATA, collect_time=collect_time)
-        self.logger.info("new_G3bb: '{}'".format(g3.name))
-        return g3
+    def new_G5bb(self, name, DATA=None, collect_time=None):
+        g5 = G5bb(box=self, name=name, DATA=DATA, collect_time=collect_time)
+        self.logger.info("new_G5bb: '{}'".format(g5.name))
+        return g5
 
     def new_GPSbb(self, name, DATA=None, collect_time=None):
         gps = GPSbb(box=self, name=name, DATA=DATA, collect_time=collect_time)
@@ -417,11 +417,16 @@ class LASS(object):
 
         self.sequence_number         = 1 
 
-        self.static_lat       = None
-        self.static_lon       = None
-        self.static_alt       = None
-        self.static_fix       = 0
-        self.static_num       = 0
+        #self.static_lat       = None
+        #self.static_lon       = None
+        #self.static_alt       = None
+
+        self.gps_lat       = None
+        self.gps_lon       = None
+        self.gps_alt       = None
+
+        self.gps_fix          = 0
+        self.gps_num          = 0
 
         # MQTT
         self.client = mqtt.Client()
@@ -470,16 +475,16 @@ class LASS(object):
         self.source_dict = dict()
         
         self._lookup = {'humidity':{'DHT22':'s_h0', 'HTS221':'s_h1', 'SHT31':'s_h2',
-                              'HTU21D':'s_h3', 'BME280':'s_h4', 'SHT25':'s_h5',
+                              'HTU21D':'s_h3', 'BME280':'s_h4', 'SHT25':'s_h5', 'G5':'s_h6',
                               'other':'s_h9'}, 
                   'temperature':{'DHT22':'s_t0', 'HTS221':'s_t1', 'SHT31':'s_t2',
-                              'HTU21D':'s_t3', 'BME280':'s_t4', 'SHT25':'s_t5',
+                              'HTU21D':'s_t3', 'BME280':'s_t4', 'SHT25':'s_t5', 'G5':'s_t6',
                               'other':'s_t9'},
-                  'PM25':{'G3':'s_d0', 'Panasonic':'s_d3', 'other':'s_d7'},
-                  'PM1' :{'G3':'s_d1', 'other':'s_d8'},
-                  'PM10':{'G3':'s_d2', 'other':'s_d9'}}
+                  'PM25':{'G5':'s_d0', 'Panasonic':'s_d3', 'other':'s_d7'},
+                  'PM1' :{'G5':'s_d1', 'other':'s_d8'},
+                  'PM10':{'G5':'s_d2', 'other':'s_d9'}}
 
-        self._gaslookup = {'NH3':'s_g0', 'CO':'s_g1', 'NO2':'s_g2', 'C3H8':'s_g3',
+        self._gaslookup = {'NH3':'s_g0', 'CO':'s_g1', 'NO2':'s_g2', 'C3H8':'s_g5',
                      'C4H10':'s_g4', 'CH4':'s_g5', 'H2':'s_g6',
                      'C2H5OH':'s_g7', 'CO2':'s_g8', 'TVOC':'s_gg'}
 
@@ -631,7 +636,7 @@ class LASS(object):
         self.client.publish(self.topic, "%s" % ( self.LASS_string ))
         print "=============================="
         # return self.LASS_string
-
+        pass
 
     def build_and_send_to_LASS(self):
         self.build_entry()
@@ -741,7 +746,6 @@ class LOG(object):
             self.datadict[device.name] = devdict
 
             for dk in datakeys:
-
                 try:
                     devdict[dk] = device.datadict[dk]
                 except:
@@ -851,9 +855,9 @@ class Dummy(GPIO_DEVICE):
         self._last_twenty_increment()
 
 
-class G3bb(GPIO_DEVICE):
+class G5bb(GPIO_DEVICE):
 
-    devkind = "G3"
+    devkind = "G5"
 
     def __init__(self, box, name, DATA, collect_time=None):
 
@@ -861,7 +865,7 @@ class G3bb(GPIO_DEVICE):
 
         GPIO_DEVICE.__init__(self, box, name)
 
-        self.box.logger.info("G3bb '{}' __init__".format(self.name))  
+        self.box.logger.info("G5bb '{}' __init__".format(self.name))  
 
         if collect_time == None:
             collect_time      = 3.0
@@ -887,40 +891,45 @@ class G3bb(GPIO_DEVICE):
         time.sleep(self.collect_time)
 
         self.datadict['start_read_time'] = time.time()
-
         size, data = self.pi.bb_serial_read(self.DATA)
-        data_hexlified = hexlify(data)
+        #data_hexlified = hexlify(data)
 
-        self.datadict['size']            = size
-        self.datadict['data_hexlified']  = data_hexlified
-        self.datadict['read_time']       = time.time()
+        try:
+            import struct
+        except ImportError:
+            import ustruct as struct
 
-        # For G3, just look at the section of data between any two
-        # occurences of the key (n1, n2)
+        buffer = []
+        data = list(data)
+        buffer += data
+        while buffer and buffer[0] != 0x42:
+            buffer.pop(0)
 
-        if size >= 32:
-            dn = 1
-            n1 = data_hexlified[0    :].find(self.key)
-            n2 = data_hexlified[n1+dn:].find(self.key)
+        if len(buffer) > 200:
+            buffer = []  # avoid an overrun if all bad data
+        if buffer[1] != 0x4d:
+            buffer.pop(0)
 
-            self.datadict['dn']       = dn
-            self.datadict['n1']       = n1
-            self.datadict['n2']       = n2
+        check = sum(buffer[0:30])
+        chksum = buffer[30]*256 + buffer[31]
+        
+        if check == chksum:
+            PM1      = buffer[10]*256 + buffer[11]
+            PM25     = buffer[12]*256 + buffer[13]
+            PM10     = buffer[14]*256 + buffer[15]
 
-            if n2 + dn - n1 == 64:
+            try:
+                temperature = int(buffer[24]*256 + buffer[25])/10
+                humidity    = int(buffer[26]*256 + buffer[27])/10
+                self.datadict['humidity']    = humidity
+                self.datadict['temperature'] = temperature
+            except:
+                pass
 
-                six_ints = [int(data_hexlified[2*i:2*(i+1)], 16) for i in range(4, 10)]
-
-                self.datadict['six_ints'] = six_ints
-
-                if len(six_ints) == 6:
-                    three = [256*a + b for a, b in zip(six_ints[0::2], six_ints[1::2])]
-                    self.datadict['three']    = three    # for debugging 
-                    PM1, PM25, PM10 = three
-                    self.datadict['PM1']      = PM1
-                    self.datadict['PM25']     = PM25
-                    self.datadict['PM10']     = PM10
-                    self.last_read_is_good    = True        
+            self.datadict['PM1']      = PM1
+            self.datadict['PM25']     = PM25
+            self.datadict['PM10']     = PM10
+            self.last_read_is_good    = True      
 
         if self.last_read_is_good:
             self.statistics['ngoodreads']    += 1 
@@ -958,7 +967,7 @@ class GPSbb(GPIO_DEVICE):
         self.satpos_sentence_type  = "$GPGSV"   #  satellite positions
 
         self.DATA        = DATA
-        self.baud             = 9600
+        self.baud        = 9600
         
         if collect_time  == None:
             collect_time = 3.
@@ -977,11 +986,10 @@ class GPSbb(GPIO_DEVICE):
         time.sleep(self.collect_time)
 
         size, data   = self.pi.bb_serial_read(self.DATA)
-        lines        = ''.join([chr(x) for x in data]).splitlines()
-
+        lines        = ''.join(chr(x) for x in data)
         self.status  = self.pi.bb_serial_read_close(self.DATA)
 
-        return lines
+        return lines.splitlines()
 
     def _get_degs(self, string, hemisphere):
 
@@ -1008,105 +1016,51 @@ class GPSbb(GPIO_DEVICE):
         all_lines                             = self._read_chunk()
         self.datadict['stop_read_time']       = time.time()
         
-        n_all_lines    = len(all_lines)
-        split_lines    = [line.split(',') for line in all_lines]
+        gprmc = [s for s in all_lines if "$GPRMC" in s]
+    
+        if gprmc is not None:
+            print "---Parsing GPRMC---", gprmc[0]
+            gdata = gprmc[0].split(",")
 
-        coor_lines     = [line for line in split_lines if
-                         (line[0] == self.sentence_type and
-                          len(line) == self.ok_length) ]
-        
-        n_coor_lines   = len(coor_lines)
+            status    = gdata[1]
+            latitude  = gdata[3]      #latitude
+            dir_lat   = gdata[4]      #latitude direction N/S
+            longitute = gdata[5]      #longitute
+            dir_lon   = gdata[6]      #longitude direction E/W
+            speed     = gdata[7]      #Speed in knots
+            trCourse  = gdata[8]      #True course
+            try:
+                receive_t = gdata[1][0:2] + ":" + gdata[1][2:4] + ":" + gdata[1][4:6]
+            except ValueError:
+                pass
+     
+            try:
+                receive_d = gdata[9][0:2] + "/" + gdata[9][2:4] + "/" + gdata[9][4:6] 
+            except ValueError:
+                pass
 
-        speed_lines    = [line for line in split_lines if
-                         (line[0] == self.speed_sentence_type and 
-                          len(line) == self.speed_ok_length)]
+            try:
+                self.datadict['latitude']          = float(latitude)
+            except ValueError:
+                self.datadict['latitude']          = 0.0
+            
+            try:
+                self.datadict['longitude']         = float(longitute) or 0.0
+            except ValueError:
+                self.datadict['longitude']         = 0.0
 
-        n_speed_lines  = len(speed_lines)
+            self.datadict['dir_lat']           = dir_lat
+            self.datadict['dir_lon']           = dir_lon
+            #self.datadict['n_sats']            = n_sats
+            #self.datadict['coor_time_string']  = coor_time_string
+            self.datadict['speed']             = speed
+            self.datadict['fix']               = 1
+            self.last_read_is_good             = True        
+            print "time : %s, latitude : %s(%s), longitude : %s(%s), speed : %s, True Course : %s, Date : %s" %  (receive_t, latitude , dir_lat, longitute, dir_lon, speed, trCourse, receive_d)
+        else:
+            self.datadict['fix']               = 0
 
-        satpos_lines   = [line for line in split_lines if
-                          line[0] == self.satpos_sentence_type]
-
-        n_satpos_lines = len(satpos_lines)
-
-        self.datadict['n_all_lines']    = n_all_lines
-        self.datadict['n_coor_lines']   = n_coor_lines
-        self.datadict['n_speed_lines']  = n_speed_lines
-        self.datadict['n_satpos_lines'] = n_satpos_lines
-
-        self.datadict['all_lines']      = all_lines
-        self.datadict['split_lines']    = split_lines
-        self.datadict['coor_lines']     = coor_lines
-        self.datadict['speed_lines']    = speed_lines
-        self.datadict['satpos_lines']   = satpos_lines
-
-        for line in coor_lines:
-            coor_time_string                           = line[1]   # there is no date
-            lat_thing, lat_hemi, lon_thing, lon_hemi   = line[2:6]
-            fix, n_sats, horiz_dilu                    = line[6:9]
-            alti_num, alti_unit, h_geoid, h_geoid_unit = line[9:13]
-            empty, checksum                            = line[13:15]
-
-            if bool(fix) and int(n_sats) > 3:
-
-                lat = self._get_degs(lat_thing, lat_hemi)
-                lon = self._get_degs(lon_thing, lon_hemi)
-
-                self.datadict['latitude']          = lat
-                self.datadict['longitude']         = lon
-                self.datadict['fix']               = fix
-                self.datadict['n_sats']            = n_sats
-                self.datadict['coor_time_string']  = coor_time_string
-                self.last_read_is_good             = True        
-
-                if alti_unit.lower() == 'm':
-                    self.datadict['altitude_meters'] = alti_num
-                else:
-                    self.datadict['altitude_meters'] = None
-
-                self.datadict['altitude']       = alti_num
-                self.datadict['altitude_units'] = alti_unit
-
-                if h_geoid_unit.lower() == 'm':
-                    self.datadict['h_geoid_meters']  = h_geoid
-                else:
-                    self.datadict['h_geoid_meters']  = None
-
-                self.datadict['h_geoid']        = h_geoid
-                self.datadict['h_geoid_units']  = h_geoid_unit
-
-        if self.last_read_is_good:
-            self.statistics['ngoodreads']      += 1 
-        else: 
-            self.statistics['nbadreads']       += 1 
-
-        self._last_twenty_increment()
-
-        # continue with non-critical, additional processing 
-        for line in speed_lines:
-            speed, speed_units   = line[7:9]
-
-            if speed_units.lower() == 'k':
-                self.datadict['speed_kph']         = speed
-            else:
-                self.datadict['speed_kph']         = None
-        
-            self.datadict['speed']         = speed
-            self.datadict['speed_units']   = speed_units
-
-            speed, speed_units   = line[7:9]                          
-
-        satdict = dict()   # clear old satdict
-        for line in satpos_lines:
-
-            line = [x.split('*')[0] for x in line]
-            info = [line[4*i:4*(i+1)] for i in range(1, 5)]
-            for thing in info:
-                try:
-                    satdict[thing[0]] = tuple(thing[1:])
-                except:
-                    pass
-
-        self.datadict['satdict']   = satdict  # very inclusive!
+        #self.datadict['satdict']   = satdict  # very inclusive!
 
 
 class DHT22bb(GPIO_DEVICE):

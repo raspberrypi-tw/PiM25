@@ -37,7 +37,7 @@ You can also combine any or all of the above!
 ```shell  
 $ sudo apt-get update
 $ sudo apt-get install -y python-dev python-pip python-matplotlib mosquitto mosquitto-clients
-$ sudo pip install numpy paho-mqtt psutil ymlconfig
+$ sudo pip install numpy paho-mqtt psutil ymlconfig pynmea2 requests
 $ sudo pip3 install paho-mqtt
 ```
 
