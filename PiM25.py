@@ -20,43 +20,63 @@ def dmm2dd(dir, DMM):
     S = round(float(DMM[index:]) * 60, 0)
     return dms2dd(D, M, S, dir)
 
+def read_last_gps(GPS_info):
+    last_gps = open("../Local/gps_info.txt","r")
+    temp = last_gps.readlines()[0].replace("\n", "").split(", ")
+    GPS_info += '|gps_num=%s' % (temp[0])
+    GPS_info += '|gps_lat=%s' % (temp[1])
+    GPS_info += '|gps_lon=%s' % (temp[3])
+    last_gps.close()
+    return GPS_info
+
 def GPS_data_read(lines):
     GPS_info = ""
-    gprmc = [rmc for rmc in lines if "$GPRMC" in rmc]
-    gpgga = [gga for gga in lines if "$GPGGA" in gga]
-       
-    if gprmc is not None and gpgga is not None:
-        gga = gpgga[0].split(",")
-        satellite = gga[7]
-      
-        gdata = gprmc[0].split(",")
-        status    = gdata[1]
-        latitude  = gdata[3]      #latitude
-        dir_lat   = gdata[4]      #latitude direction N/S
-        longitude = gdata[5]      #longitude
-        dir_lon   = gdata[6]      #longitude direction E/W
-        speed     = gdata[7]      #Speed in knots
-        """
-        try:
-            receive_t = gdata[1][0:2] + ":" + gdata[1][2:4] + ":" + gdata[1][4:6]
-        except ValueError:
-            pass
- 
-        try:
-            receive_d = gdata[9][4:] + "/" + gdata[9][2:4] + "/" + gdata[9][0:2] 
-        except ValueError:
-            pass
-        """
-        print "latitude : %s(%s), longitude : %s(%s), speed : %s" %  (latitude , dir_lat, longitude, dir_lon, speed)
-        if longitude and latitude:
-            if speed <= 10:
-                GPS_info += '|gps_num=%s' % (int(satellite))
-                GPS_info += '|gps_lat=%s' % (dmm2dd(dir_lat, latitude))
-                GPS_info += '|gps_lon=%s' % (dmm2dd(dir_lon, longitude))
+    try:
+        gprmc = [rmc for rmc in lines if "$GPRMC" in rmc]
+        gpgga = [gga for gga in lines if "$GPGGA" in gga]
+
+        if len(gprmc) and len(gpgga):   # read correct
+            gga = gpgga[0].split(",")
+            gdata = gprmc[0].split(",")
+            valid = gdata[2]
+            if valid is 'A':    # valid status
+                print("GPS valid status")
+                satellite = int(gga[7])
+                status    = gdata[1]
+                latitude  = gdata[3]      #latitude
+                dir_lat   = gdata[4]      #latitude direction N/S
+                longitude = gdata[5]      #longitude
+                dir_lon   = gdata[6]      #longitude direction E/W
+                speed     = gdata[7]      #Speed in knots
+                speed = float(speed) * 1.825
+                print "latitude : %s(%s), longitude : %s(%s), speed : %f" %  (latitude , dir_lat, longitude, dir_lon, speed)
+                if speed <= 10:     # move slow
+                    print("real time gps location")
+                    GPS_info += '|gps_num=%f' % (satellite)
+                    GPS_info += '|gps_lat=%s' % (dmm2dd(dir_lat, latitude))
+                    GPS_info += '|gps_lon=%s' % (dmm2dd(dir_lon, longitude))
+
+                    # store GPS information
+                    last_gps = open("../Local/gps_info.txt","w") 
+                    last_gps.write(str(satellite) + ", " + str(dmm2dd(dir_lat, latitude)) + ", " + dir_lat + ", " + str(dmm2dd(dir_lon, longitude)) + ", " + dir_lon)
+                    last_gps.close() 
+                else:
+                    # won't upload data
+                    print("out of speed")
             else:
-                print("out of speed")
+                print("GPS invalid status")
+                # use last gps location
+                GPS_info = read_last_gps(GPS_info)
         else:
-            print("GPS dead")
+            print("GPS can't find GPRMC and GPGGA")
+            # use last gps location
+            GPS_info = read_last_gps(GPS_info)
+
+    except Exception as e:
+        print(e)
+        # use last gps location
+        GPS_info = read_last_gps(GPS_info)
+
     return GPS_info
         
 def bytes2hex(s):
@@ -98,7 +118,10 @@ def upload_data(msg, pm_s, loc_s):
         Restful_URL = Conf.Restful_URL
         print(msg)
         restful_str = "wget -O /tmp/last_upload.log \"" + Restful_URL + "device_id=" + Conf.DEVICE_ID + "&msg=" + msg + "\""
-        os.system(restful_str)
+        try:
+            os.system(restful_str)
+        except Exception as e:
+            print(e)
     else:
         print("Error: Won't upload data")
  
@@ -128,7 +151,7 @@ if not status:  # if it worked, i.e. if it's running...
 while True:
     weather_data = ""
     PM_STATUS = -1    # get pm2.5 data
-    LOCATION_STATUS = -1  # get location infomation
+    LOCATION_STATUS = -1  # get location information
 
     ########## Read G5T ##########
     try:
@@ -164,7 +187,7 @@ while True:
    
     print("weather_data: ", weather_data)
     print("\n")
-    time.sleep(1)
+    time.sleep(3)
 
     ########## Read GPS ##########
     try:
@@ -196,8 +219,9 @@ while True:
     ###############################
 
     print("weather_data: ", weather_data)
+    print("\n")
     upload_data(weather_data, PM_STATUS, LOCATION_STATUS)
-    time.sleep(1)
+    time.sleep(3)
     print("\n")
 
     ########## Store msg ##########
@@ -209,7 +233,7 @@ while True:
             print(e)
             print "Error: writing to SD"    
     ##############################
-    time.sleep(3)
+    time.sleep(10)
 
 pi.stop()
 print("End")
