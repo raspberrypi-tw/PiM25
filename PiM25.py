@@ -6,6 +6,7 @@ import PiM25_config as Conf
 import os
 import re
 
+"""
 def dms2dd(degrees, minutes, seconds, direction):
     dd = float(degrees) + float(minutes)/60 + float(seconds)/(60*60);
     if direction == 'S' or direction == 'W':
@@ -19,9 +20,10 @@ def dmm2dd(dir, DMM):
     M = int(DMM[index-2:index])
     S = round(float(DMM[index:]) * 60, 0)
     return dms2dd(D, M, S, dir)
+"""
 
 def read_last_gps(GPS_info):
-    last_gps = open("../Local/gps_info.txt","r")
+    last_gps = open("/home/pi/Local/gps_info.txt","r")
     temp = last_gps.readlines()[0].replace("\n", "").split(", ")
     GPS_info += '|gps_num=%s' % (temp[0])
     GPS_info += '|gps_lat=%s' % (temp[1])
@@ -53,12 +55,15 @@ def GPS_data_read(lines):
                 if speed <= 10:     # move slow
                     print("real time gps location")
                     GPS_info += '|gps_num=%f' % (satellite)
-                    GPS_info += '|gps_lat=%s' % (dmm2dd(dir_lat, latitude))
-                    GPS_info += '|gps_lon=%s' % (dmm2dd(dir_lon, longitude))
-
+                    # GPS_info += '|gps_lat=%s' % (dmm2dd(dir_lat, latitude))
+                    # GPS_info += '|gps_lon=%s' % (dmm2dd(dir_lon, longitude))
+                    GPS_info += '|gps_lat=%f' % (latitude * 100)
+                    GPS_info += '|gps_lon=%f' % (longitude * 100)
+                    
                     # store GPS information
-                    last_gps = open("../Local/gps_info.txt","w") 
-                    last_gps.write(str(satellite) + ", " + str(dmm2dd(dir_lat, latitude)) + ", " + dir_lat + ", " + str(dmm2dd(dir_lon, longitude)) + ", " + dir_lon)
+                    last_gps = open("/home/pi/Local/gps_info.txt","w") 
+                    # last_gps.write(str(satellite) + ", " + str(dmm2dd(dir_lat, latitude)) + ", " + dir_lat + ", " + str(dmm2dd(dir_lon, longitude)) + ", " + dir_lon)
+                    last_gps.write(str(satellite) + ", " + str(latitude * 100) + ", " + dir_lat + ", " + str(longitude * 100) + ", " + dir_lon)
                     last_gps.close() 
                 else:
                     # won't upload data
@@ -104,7 +109,7 @@ def G5T_data_read(dstr):
         return weather 
 
 def upload_data(msg, pm_s, loc_s):
-    if pm_s == 1 and loc_s == 1:
+    if pm_s == 1:
         msg += '|app=%s' % (Conf.APP_ID)
         msg += '|device=%s' % (Conf.DEVICE)
         msg += '|device_id=%s' % (Conf.DEVICE_ID)
@@ -233,7 +238,7 @@ while True:
             print(e)
             print "Error: writing to SD"    
     ##############################
-    time.sleep(10)
+    time.sleep(291)
 
 pi.stop()
 print("End")

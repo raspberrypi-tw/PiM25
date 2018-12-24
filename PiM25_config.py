@@ -8,7 +8,7 @@ DEVICE_ID = "DEVICE_ID1234"
 DEVICE_IP = ''
 
 # Restful_API
-env_file = open("../Local/env.txt").readlines()
+env_file = open("/home/pi/Local/env.txt").readlines()
 Restful_URL = env_file[0][5:].replace("\n", "")
 Restful_interval = 60           # 60 seconds
 float_re_pattern = re.compile("^-?\d+\.\d+$")
