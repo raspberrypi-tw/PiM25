@@ -160,14 +160,14 @@ while True:
 
     ########## Read G5T ##########
     try:
-        pi.bb_serial_read_close(G5T_RX)
+        pi.bb_serial_read_close(G5T_GPIO)
     except Exception as e:
         pass
 
     try:
-        pi.bb_serial_read_open(G5T_RX, 9600)
+        pi.bb_serial_read_open(G5T_GPIO, 9600)
         time.sleep(1)
-        (G5T_status, G5T_data) = pi.bb_serial_read(G5T_RX)
+        (G5T_status, G5T_data) = pi.bb_serial_read(G5T_GPIO)
         now_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S").split(" ")
         if G5T_status:
             print("read G5T")
@@ -184,7 +184,7 @@ while True:
         print(e)
 
     try:
-        pi.bb_serial_read_close(G5T_RX)
+        pi.bb_serial_read_close(G5T_GPIO)
         print("G5T close success")
     except Exception as e: 
         pass
@@ -196,14 +196,14 @@ while True:
 
     ########## Read GPS ##########
     try:
-        pi.bb_serial_read_close(GPS_RX)
+        pi.bb_serial_read_close(GPS_GPIO)
     except Exception as e:
         pass
     
     try:
-        pi.bb_serial_read_open(GPS_RX, 9600)
+        pi.bb_serial_read_open(GPS_GPIO, 9600)
         time.sleep(1)
-        (GPS_status, GPS_data) = pi.bb_serial_read(GPS_RX)
+        (GPS_status, GPS_data) = pi.bb_serial_read(GPS_GPIO)
         if GPS_status:
             print("read GPS")
             lines = ''.join(chr(x) for x in GPS_data).splitlines()
@@ -217,7 +217,7 @@ while True:
         print(e)
     
     try:
-        pi.bb_serial_read_close(GPS_RX)
+        pi.bb_serial_read_close(GPS_GPIO)
         print("GPS close success")
     except Exception as e:
         pass
@@ -230,7 +230,8 @@ while True:
     print("\n")
 
     ########## Store msg ##########
-    with open(path + str(now_time[0]) + ".txt", "a") as f:
+    date = datetime.now().strftime("%Y-%m-%d %H:%M:%S").split(" ")
+    with open(path + str(date[0]) + ".txt", "a") as f:
         try:
             if len(weather_data):
                 f.write(weather_data + "\n")
