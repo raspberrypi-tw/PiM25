@@ -1,7 +1,7 @@
 # airbox-pi
 ## create a airbox to detect pm2.5 with raspberry pi
 
-""" PIN
+```
 ##############################################################             
 #           Raspberry Pi 3 GPIO Pinout;           Corner --> #
 #                    (pin 1)  | (pin 2)                      #                  
@@ -27,6 +27,6 @@
 #                     GND     | GPIO 21                      #
 #                   (pin 39)  | (pin 40)                     #                  
 ##############################################################
-"""
+```
 
 ![LOGO](./PLOT/logo.png)
