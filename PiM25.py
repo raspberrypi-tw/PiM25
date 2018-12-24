@@ -130,8 +130,8 @@ def upload_data(msg, pm_s, loc_s):
     else:
         print("Error: Won't upload data")
  
-G5T_RX = 15
-GPS_RX = 24
+G5T_GPIO = 23
+GPS_GPIO = 24
 path = "/home/pi/Data/"
 
 ########## Start PIGPIO ##########
