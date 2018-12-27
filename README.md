@@ -1,4 +1,4 @@
-# airbox-pi
+# PiM25
 ## create a airbox to detect pm2.5 with raspberry pi
 
 ## Pinout
