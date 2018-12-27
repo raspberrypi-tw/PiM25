@@ -32,3 +32,7 @@
 ```
 ## Logo
 ![LOGO](./PLOT/logo.png)
+
+## Contributors
+[Tzu Heng, Huang](https://github.com/zihengh1)
+[Phil Alive](https://github.com/x1001000)
