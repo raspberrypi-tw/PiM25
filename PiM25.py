@@ -122,7 +122,7 @@ def upload_data(msg, pm_s, loc_s):
     
         Restful_URL = Conf.Restful_URL
         print(msg)
-        restful_str = "sudo wget -O /tmp/last_upload.log \"" + Restful_URL + "device_id=" + Conf.DEVICE_ID + "&msg=" + msg + "\""
+        restful_str = "wget -O /tmp/last_upload.log \"" + Restful_URL + "device_id=" + Conf.DEVICE_ID + "&msg=" + msg + "\""
         try:
             os.system(restful_str)
         except Exception as e:
