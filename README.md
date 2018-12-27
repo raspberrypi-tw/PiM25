@@ -34,5 +34,5 @@
 ![LOGO](./PLOT/logo.png)
 
 ## Contributors
-[Tzu Heng, Huang](https://github.com/zihengh1)
+[Tzu Heng, Huang](https://github.com/zihengh1) <br>
 [Phil Alive](https://github.com/x1001000)
