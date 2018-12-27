@@ -1,6 +1,6 @@
 #!/bin/bash
 
-OTA="$(grep -Po 'OTA: \K.*' /home/pi/Local/env.txt)"
+OTA="$(sudo grep -Po 'OTA: \K.*' /home/pi/Local/env.txt)"
 
 sleep 5
 [ -f /home/pi/PiM25/PiM25.py ] && {
