@@ -51,10 +51,15 @@ from itertools import cycle
 import matplotlib.pyplot as plt
 
 # make a box
+
+```python
 box = BOX('my box', use_WiFi=True,
               use_SMBus=True, use_pigpio=True)
+```
 
 # add your sensors
+
+```python
 dht  = box.new_DHT22bb('my dht', DATA=17, POWER=27)
 
 g3   = box.new_G3bb('my dht', DATA=24, collect_time=3.0)
@@ -67,10 +72,11 @@ CO   = box.new_MOS_gas_sensor('my CO sensor', ADC='my adc', channel=1,
                               Calibrationdata=[[10,5000],[100,2200],[1000,777]],
                               logCalibrationdata=[[10,5000],[100,2200],[1000,777]],
                               use_loglog=False, gasname='CO')
-
+```
 
 # add your oled screen setup
 
+```python
 oled = box.new_OLEDi2c('my oled')
 
 s1 = oled.new_screen('T and H')
@@ -104,12 +110,17 @@ oled.initiate()
 oled.display_on()
 for thing in ('show_white', 'show_black', 'show_gray'):
     getattr(oled, thing)()
+```
 
 # Define your loop for operation 
 
+```python
 wait = 7.  # seconds
+```
 
 # Go!
+
+```python
 while True:
 
     oled.show_gray()
@@ -134,7 +145,7 @@ while True:
         s = screenz.next()
         oled.show_screen(s)
         time.sleep(1.5)
-
+```
 
 
 METHOD 2: Python interactive.
@@ -143,6 +154,7 @@ METHOD 2: Python interactive.
 
 METHOD 3: .yaml definition.
 
+```yaml
     my box:
       args: {'use_WiFi': True, 'use_pigpio': True, 'use_SMBus': True}
       LASS devices:
@@ -184,10 +196,11 @@ METHOD 3: .yaml definition.
                          'fmt':'PM1 {0:.0f}, PM10 {0:.0f}', 'fontdef':'default',
                          'info':[['my gthree', 'PM1'], ['my gthree', 'PM10']]}
                   xy0: [2, 35]
-
+```
 
 And the python to run it is currently like this. In the next version, it will be completely automated
 
+```python
     boxes = reader('mybox_documentation.yaml')
 
     box   = boxes[0]
@@ -221,11 +234,13 @@ And the python to run it is currently like this. In the next version, it will be
             s = next(screenz)
             oled.show_screen(s)
             time.sleep(1)
+```
 
 ----
 
 Here is a quick review of python methods:
 
+```python
     BOX
     .clear_all_device_datadicts()
     .read_all_devices()
@@ -316,3 +331,4 @@ Here is a quick review of python methods:
                     .__repr__()    
                     .update()
                     .preview_me()
+```
