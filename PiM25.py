@@ -55,8 +55,6 @@ def GPS_data_read(lines):
                 if speed <= 10:     # move slow
                     print("real time gps location")
                     GPS_info += '|gps_num=%f' % (satellite)
-                    # GPS_info += '|gps_lat=%s' % (dmm2dd(dir_lat, latitude))
-                    # GPS_info += '|gps_lon=%s' % (dmm2dd(dir_lon, longitude))
                     GPS_info += '|gps_lat=%f' % (latitude * 100)
                     GPS_info += '|gps_lon=%f' % (longitude * 100)
                     
@@ -153,93 +151,91 @@ if not status:  # if it worked, i.e. if it's running...
         print "problem instantiating pi, the exception message is: ", e
 ##################################
 
-while True:
-    weather_data = ""
-    PM_STATUS = -1    # get pm2.5 data
-    LOCATION_STATUS = -1  # get location information
+weather_data = ""
+PM_STATUS = -1    # get pm2.5 data
+LOCATION_STATUS = -1  # get location information
 
-    ########## Read G5T ##########
-    try:
-        pi.bb_serial_read_close(G5T_GPIO)
-    except Exception as e:
-        pass
+########## Read G5T ##########
+try:
+    pi.bb_serial_read_close(G5T_GPIO)
+except Exception as e:
+    pass
 
-    try:
-        pi.bb_serial_read_open(G5T_GPIO, 9600)
-        time.sleep(1)
-        (G5T_status, G5T_data) = pi.bb_serial_read(G5T_GPIO)
-        now_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S").split(" ")
-        if G5T_status:
-            print("read G5T")
-            data_hex = bytes2hex(G5T_data)
-            pm_data = G5T_data_read(data_hex)
-            if len(pm_data):
-                weather_data += pm_data
-                PM_STATUS = 1
-            weather_data += '|date=%s' % (str(now_time[0]))
-            weather_data += '|time=%s' % (str(now_time[1]))
-        else:
-            print("read nothing")
-    except Exception as e:
-        print(e)
+try:
+    pi.bb_serial_read_open(G5T_GPIO, 9600)
+    time.sleep(1)
+    (G5T_status, G5T_data) = pi.bb_serial_read(G5T_GPIO)
+    now_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S").split(" ")
+    if G5T_status:
+        print("read G5T")
+        data_hex = bytes2hex(G5T_data)
+        pm_data = G5T_data_read(data_hex)
+        if len(pm_data):
+            weather_data += pm_data
+            PM_STATUS = 1
+        weather_data += '|date=%s' % (str(now_time[0]))
+        weather_data += '|time=%s' % (str(now_time[1]))
+    else:
+        print("read nothing")
+except Exception as e:
+    print(e)
 
-    try:
-        pi.bb_serial_read_close(G5T_GPIO)
-        print("G5T close success")
-    except Exception as e: 
-        pass
-    #############################
+try:
+    pi.bb_serial_read_close(G5T_GPIO)
+    print("G5T close success")
+except Exception as e: 
+    pass
+#############################
    
-    print("weather_data: ", weather_data)
-    print("\n")
-    time.sleep(3)
+print("weather_data: ", weather_data)
+print("\n")
+time.sleep(3)
 
-    ########## Read GPS ##########
-    try:
-        pi.bb_serial_read_close(GPS_GPIO)
-    except Exception as e:
-        pass
+########## Read GPS ##########
+try:
+    pi.bb_serial_read_close(GPS_GPIO)
+except Exception as e:
+    pass
     
+try:
+    pi.bb_serial_read_open(GPS_GPIO, 9600)
+    time.sleep(1)
+    (GPS_status, GPS_data) = pi.bb_serial_read(GPS_GPIO)
+    if GPS_status:
+        print("read GPS")
+        lines = ''.join(chr(x) for x in GPS_data).splitlines()
+        loc_data = GPS_data_read(lines)
+        if len(loc_data):
+            weather_data += loc_data
+            LOCATION_STATUS = 1
+    else:
+        print("read nothing")
+except Exception as e:
+    print(e)
+    
+try:
+    pi.bb_serial_read_close(GPS_GPIO)
+    print("GPS close success")
+except Exception as e:
+    pass
+###############################
+
+print("weather_data: ", weather_data)
+print("\n")
+upload_data(weather_data, PM_STATUS, LOCATION_STATUS)
+time.sleep(3)
+print("\n")
+
+########## Store msg ##########
+date = datetime.now().strftime("%Y-%m-%d %H:%M:%S").split(" ")
+with open(path + str(date[0]) + ".txt", "a") as f:
     try:
-        pi.bb_serial_read_open(GPS_GPIO, 9600)
-        time.sleep(1)
-        (GPS_status, GPS_data) = pi.bb_serial_read(GPS_GPIO)
-        if GPS_status:
-            print("read GPS")
-            lines = ''.join(chr(x) for x in GPS_data).splitlines()
-            loc_data = GPS_data_read(lines)
-            if len(loc_data):
-                weather_data += loc_data
-                LOCATION_STATUS = 1
-        else:
-            print("read nothing")
+        if len(weather_data):
+            f.write(weather_data + "\n")
     except Exception as e:
         print(e)
-    
-    try:
-        pi.bb_serial_read_close(GPS_GPIO)
-        print("GPS close success")
-    except Exception as e:
-        pass
-    ###############################
-
-    print("weather_data: ", weather_data)
-    print("\n")
-    upload_data(weather_data, PM_STATUS, LOCATION_STATUS)
-    time.sleep(3)
-    print("\n")
-
-    ########## Store msg ##########
-    date = datetime.now().strftime("%Y-%m-%d %H:%M:%S").split(" ")
-    with open(path + str(date[0]) + ".txt", "a") as f:
-        try:
-            if len(weather_data):
-                f.write(weather_data + "\n")
-        except Exception as e:
-            print(e)
-            print "Error: writing to SD"    
-    ##############################
-    time.sleep(291)
+        print "Error: writing to SD"    
+##############################
 
 pi.stop()
 print("End")
