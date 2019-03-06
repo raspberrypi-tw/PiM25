@@ -1,23 +1,22 @@
 import re
 import os
+import commands
 
 # Device information
 APP_ID = "PiM25"
-DEVICE = "Raspberry Pi 3B+"
-DEVICE_ID = "DEVICE_ID1234"
-DEVICE_IP = ''
+DEVICE = "Raspberry_Pi"
+G5T_GPIO = 23
+GPS_GPIO = 24
+DEVICE_IP = commands.getoutput("hostname -I")
+data_path = "/home/pi/Data/"
 
 # Restful_API
 env_file = open("/home/pi/Local/env.txt").readlines()
-Restful_URL = env_file[0][5:].replace("\n", "")
-Restful_interval = 60           # 60 seconds
-float_re_pattern = re.compile("^-?\d+\.\d+$")
-num_re_pattern = re.compile("^-?\d+\.\d+$|^-?\d+$")
+Restful_URL = env_file[0].split(",")[1].replace("\n", "")
 
 # MAC address
 mac = open('/sys/class/net/eth0/address').readline().upper().strip()
 DEVICE_ID = mac.replace(':','') 
-print(DEVICE_ID)
 
 # Tick time
 with open('/proc/uptime', 'r') as f:
