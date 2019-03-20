@@ -17,6 +17,8 @@ def organize(msg, pm_s, loc_s):
         # print(msg)
         ## ready to upload data ##
         restful_str = "wget -O /tmp/last_upload.log \"" + Restful_URL + "device_id=" + Conf.DEVICE_ID + "&msg=" + msg + "\""
+        
+        # print(restful_str)
 
         try:
             os.system(restful_str)
