@@ -1,6 +1,8 @@
 import time
 import pigpio
 import commands
+import os
+import csv
 from datetime import datetime
 
 import lib.GPS_module as GPS_m
@@ -27,7 +29,7 @@ if __name__ == '__main__':
             print "initial pi fail, the error message is: ", e
  
     ## collect all sensor data ##
-    weather_data = ""
+    weather_data = Conf.device_info.copy()
 
     ## check pm2.5 sensor status ##
     PM_STATUS = -1
@@ -52,16 +54,14 @@ if __name__ == '__main__':
         if s:
             print("read G5T")
             data_hex = G5T_m.bytes2hex(raw_data)
-            pm_data = G5T_m.data_read(data_hex)
-            print(pm_data)
-            if len(pm_data):
+            weather_data, check  = G5T_m.data_read(data_hex, weather_data)
+            if check is 1:
                 ## collect pm2.5 data ##
-                weather_data += pm_data
                 PM_STATUS = 1
 
                 ## record sensor time ##
-                weather_data += '|date=%s' % (str(G5T_time[0]))
-                weather_data += '|time=%s' % (str(G5T_time[1]))
+                weather_data["date"] = (str(G5T_time[0]))
+                weather_data["time"] = (str(G5T_time[1]))
         else:
             print("read nothing")
             PM_STATUS = -1
@@ -77,7 +77,7 @@ if __name__ == '__main__':
         pass
     #############################
    
-    print("weather_data: ", weather_data)
+    # print("weather_data: ", weather_data)
 
     ########## Read GPS ##########
     try:
@@ -92,16 +92,14 @@ if __name__ == '__main__':
         if s:
             print("read GPS")
             lines = ''.join(chr(x) for x in raw_data).splitlines()
-            loc_data = GPS_m.data_read(lines)
-            if len(loc_data):
-                ## collect location data ##
-                weather_data += loc_data
-                LOCATION_STATUS = 1
+            weather_data = GPS_m.data_read(lines, weather_data)
+            LOCATION_STATUS = 1
 
         else:
             print("read nothing")
-            weather_data += GPS_m.read_last_gps()
+            weather_data = GPS_m.read_last_gps(weather_data)
             LOCATION_STATUS = -1
+
     except Exception as e:
         print(e)
         LOCATION_STATUS = -1
@@ -114,23 +112,30 @@ if __name__ == '__main__':
     
     ###############################
     
-    print("weather_data: ", weather_data)
+    # print("weather_data: ", weather_data)
     
     ###############################
 
-    upload.organize(weather_data, PM_STATUS, LOCATION_STATUS)
+    weather_data = upload.organize(weather_data, PM_STATUS, LOCATION_STATUS)
     
     ########## Store msg ##########
     date = datetime.now().strftime("%Y-%m-%d %H:%M:%S").split(" ")
-    with open(Conf.data_path + str(date[0]) + ".txt", "a") as f:
+   
+    info_key = weather_data.keys()
+    store_data = [weather_data]
+    if os.path.exists(Conf.data_path + "record.csv") is False:
+        with open(Conf.data_path + "record.csv", "a") as output_file:
+            dict_writer = csv.DictWriter(output_file, info_key)
+            dict_writer.writeheader()
+         
+    with open(Conf.data_path + "record.csv", "a") as output_file:
         try:
-            if len(weather_data):
-                ## write data to SD card ##
-                f.write(weather_data + "\n")
-
+            dict_writer = csv.DictWriter(output_file, info_key)
+            dict_writer.writerows(store_data)
         except Exception as e:
             print(e)
-            print "Error: writing to SD"    
+            print("Error: writing to SD")
+
     ##############################
     
     lcd.display(weather_data) 

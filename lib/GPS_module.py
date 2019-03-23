@@ -1,15 +1,14 @@
-def read_last_gps(info = ""):
+def read_last_gps(info):
     last_gps = open("/home/pi/Local/gps_info.txt","r")
     file_list = last_gps.readlines()[0].replace("\n", "").split(",")
-    info += '|gps_num=%s' % (file_list[0])
-    info += '|gps_lat=%s' % (file_list[1])
-    info += '|gps_lon=%s' % (file_list[3])
+    info["gps_num"] = int(file_list[0])
+    info["gps_lat"] = float(file_list[1])
+    info["gps_lon"] = float(file_list[3])
     last_gps.close()
     return info
 
-def data_read(lines):
-    temp_info = ""
-
+def data_read(lines, temp_info):
+    
     try:
         gprmc = [rmc for rmc in lines if "$GPRMC" in rmc]
         gpgga = [gga for gga in lines if "$GPGGA" in gga]
@@ -38,9 +37,9 @@ def data_read(lines):
                 if speed <= 10:     
                     ## moving slow ##
                     ## collect gps location ##
-                    temp_info += '|gps_num=%f' % (satellite)
-                    temp_info += '|gps_lat=%f' % (latitude * 100)
-                    temp_info += '|gps_lon=%f' % (longitude * 100)
+                    temp_info["gps_num"] = satellite
+                    temp_info["gps_lat"] = (latitude * 100)
+                    temp_info["gps_lon"] = (longitude * 100)
                     
                     ## store GPS information ##
                     lastest_gps = open("/home/pi/Local/gps_info.txt","w") 

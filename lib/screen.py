@@ -45,9 +45,6 @@ def display(data):
     draw.text((0,8),'Time: ' + today_time, fill = 1)
    
     try:
-        disp.image(PiM25_logo)
-        disp.display()
-        time.sleep(3)
         disp.image(Time_image)
         disp.display()
         time.sleep(3)
