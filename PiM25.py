@@ -9,7 +9,7 @@ import lib.GPS_module as GPS_m
 import lib.G5T_module as G5T_m
 import lib.PiM25_config as Conf
 import lib.upload_data as upload
-import lib.screen as lcd
+# import lib.screen as lcd
  
 if __name__ == '__main__':
 
@@ -138,6 +138,6 @@ if __name__ == '__main__':
 
     ##############################
     
-    lcd.display(weather_data) 
+    # lcd.display(weather_data) 
     pi.stop()
     print("End")
