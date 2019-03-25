@@ -12,7 +12,7 @@ import lib.upload_data as upload
 # import lib.screen as lcd
 
 if __name__ == '__main__':
-    print("hi")
+
     ## initial PIGPIO library ##
     (s, process) = commands.getstatusoutput('sudo pidof pigpiod')
     if s:  
