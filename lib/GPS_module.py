@@ -1,10 +1,10 @@
 def read_last_gps(info):
-    last_gps = open("/home/pi/Local/gps_info.txt","r")
-    file_list = last_gps.readlines()[0].replace("\n", "").split(",")
+    lastest_gps = open("/home/pi/Local/gps_info.txt","r")
+    file_list = lastest_gps.readlines()[0].replace("\n", "").split(",")
     info["gps_num"] = int(file_list[0])
     info["gps_lat"] = float(file_list[1])
     info["gps_lon"] = float(file_list[3])
-    last_gps.close()
+    lastest_gps.close()
     return info
 
 def data_read(lines, temp_info):
@@ -44,7 +44,7 @@ def data_read(lines, temp_info):
                     ## store GPS information ##
                     lastest_gps = open("/home/pi/Local/gps_info.txt","w") 
                     lastest_gps.write(str(satellite) + "," + str(latitude * 100) + "," + dir_lat + "," + str(longitude * 100) + "," + dir_lon)
-                    last_gps.close() 
+                    lastest_gps.close() 
                 else:
                     ## moving fast ##
                     print("out of speed")
