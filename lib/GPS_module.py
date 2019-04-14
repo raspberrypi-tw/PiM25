@@ -22,28 +22,28 @@ def data_read(lines, temp_info):
                 ## valid status ##
                 ## print("GPS valid status") ##
                 satellite = int(gga[7])
-                status    = gdata[1]      ## status ##
-                latitude  = gdata[3]      ## latitude ##
-                dir_lat   = gdata[4]      ## latitude direction N/S ##
-                longitude = gdata[5]      ## longitude ##
-                dir_lon   = gdata[6]      ## longitude direction E/W ##
-                speed     = gdata[7]      ## Speed in knots ##
+                status    = gdata[1]                   ## status ##
+                latitude  = float(gdata[3]) / 100      ## latitude ##
+                dir_lat   = gdata[4]                   ## latitude direction N/S ##
+                longitude = float(gdata[5]) / 100      ## longitude ##
+                dir_lon   = gdata[6]                   ## longitude direction E/W ##
+                speed     = gdata[7]                   ## Speed in knots ##
 
                 ## transform type ##
                 speed = float(speed) * 1.825
 
-                print "latitude : %s(%s), longitude : %s(%s), speed : %f" %  (latitude , dir_lat, longitude, dir_lon, speed)
+                print "latitude : %f(%s), longitude : %f(%s), speed : %f" %  (latitude , dir_lat, longitude, dir_lon, speed)
 
                 if speed <= 10:     
                     ## moving slow ##
                     ## collect gps location ##
                     temp_info["gps_num"] = satellite
-                    temp_info["gps_lat"] = (latitude * 100)
-                    temp_info["gps_lon"] = (longitude * 100)
+                    temp_info["gps_lat"] = latitude
+                    temp_info["gps_lon"] = longitude
                     
                     ## store GPS information ##
                     lastest_gps = open("/home/pi/Local/gps_info.txt","w") 
-                    lastest_gps.write(str(satellite) + "," + str(latitude * 100) + "," + dir_lat + "," + str(longitude * 100) + "," + dir_lon)
+                    lastest_gps.write(str(satellite) + "," + str(latitude) + "," + dir_lat + "," + str(longitude) + "," + dir_lon)
                     lastest_gps.close() 
                 else:
                     ## moving fast ##
